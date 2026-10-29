@@ -81,10 +81,12 @@ async function checkForUpdate(manual: boolean): Promise<void> {
   await checkInFlight;
 }
 
-export function initAppUpdater(): void {
-  if (!isTauri()) return;
-  void checkForUpdate(false);
+export function initAppUpdater(onStartupCheck?: () => void): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  onStartupCheck?.();
+  const startupCheck = checkForUpdate(false);
   document.addEventListener("click", (event) => {
     if ((event.target as Element | null)?.closest("[data-check-updates]")) void checkForUpdate(true);
   });
+  return startupCheck;
 }

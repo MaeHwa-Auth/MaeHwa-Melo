@@ -31,6 +31,7 @@ export function createCurrentTrackUi(options: CurrentTrackUiOptions) {
   function patchCurrentTrackUi(): void {
     const current = options.current();
     const snapshot = options.snapshot();
+    options.app.querySelector<HTMLElement>(".app-shell")?.classList.toggle("is-playing", snapshot.playing);
     const title = current?.title ?? "재생 중인 곡이 없습니다";
     const metadataRepairButton = options.app.querySelector<HTMLButtonElement>("[data-metadata-repair]");
     if (metadataRepairButton) {
@@ -71,7 +72,7 @@ export function createCurrentTrackUi(options: CurrentTrackUiOptions) {
       const heroSubtitle = hero.querySelector<HTMLElement>("[data-hero-subtitle]");
       const heroSource = hero.querySelector<HTMLElement>("[data-hero-source]");
       if (heroTitle) heroTitle.textContent = current?.title ?? "재생할 곡을 선택하세요";
-      if (heroSubtitle) heroSubtitle.innerHTML = current ? `${artistLinksMarkup(current)}${current.album ? ` · ${esc(current.album)}` : ""}` : "내 라이브러리에서 음악을 고르거나 폴더를 추가하세요.";
+      if (heroSubtitle) heroSubtitle.innerHTML = current ? `${artistLinksMarkup(current)}${current.album ? ` · <span class="hero-album-link" data-open-album role="link" tabindex="0" title="수록 앨범 보기">${esc(current.album)}</span>` : ""}` : "내 라이브러리에서 음악을 고르거나 폴더를 추가하세요.";
       if (heroSource) heroSource.textContent = current ? current.source === "local" ? "로컬 음악" : "Spotify" : "지금 듣기";
       options.replaceWithMarkup(hero.querySelector(".artwork.hero"), options.artMarkup(current));
     }
@@ -79,7 +80,7 @@ export function createCurrentTrackUi(options: CurrentTrackUiOptions) {
       const selected = Boolean(current && row.dataset.track === current.id);
       row.classList.toggle("is-current", selected);
       const index = row.querySelector<HTMLElement>(".track-index");
-      if (index) index.innerHTML = selected && snapshot.playing ? '<i class="equalizer"><b></b><b></b><b></b></i>' : row.dataset.rowNumber ?? "";
+      if (index) index.innerHTML = selected ? '<i class="equalizer"><b></b><b></b><b></b></i>' : row.dataset.rowNumber ?? "";
     });
     options.patchTrackRowPlaybackState();
     options.patchAlbumCardPlaybackState();

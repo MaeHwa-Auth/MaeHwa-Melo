@@ -68,6 +68,7 @@ import { readRecentTrackIds, recordRecentTrack, resolveRecentTracks } from "./fe
 import { artistLabel, artMarkup } from "./features/library/trackPresentation";
 import { persistPlaybackState, readRestoreState } from "./features/playback/persistence";
 import { initAppUpdater } from "./services/appUpdater";
+import { applyPersonalizationPreferences, updatePersonalizationPreference } from "./services/personalization";
 import type { RestoreState } from "./features/playback/persistence";
 import { createPlaybackRestore } from "./features/playback/restore";
 import { createSpotifyAutoAdvance } from "./features/playback/spotifyAutoAdvance";
@@ -83,6 +84,8 @@ import "./styles.css";
 import "./album.css";
 import "./redesign.css";
 import "./app-updates.css";
+
+applyPersonalizationPreferences();
 
 type Page = AppPage;
 type SourceFilter = "all" | "local" | "spotify";
@@ -659,7 +662,7 @@ const loadPlaylist = createPlaylistLoader({
   setPage: (value) => { page = value; },
   setPlayQueue: (value) => { playQueue = value; },
   setPlaybackPlaylistName: (value) => { playbackPlaylistName = value; },
-  render,
+  render: renderPlaylistSelection,
   scrollToCurrentTrack,
   showNotice,
 });
@@ -973,6 +976,59 @@ function render(): void {
     artistLabel,
   });
   renderLifecycle.finish(beforeRender.scrollTop, beforeRender.existingNowPlayingSlot);
+  const mainContent = app.querySelector<HTMLElement>(".main-content");
+  if (mainContent) {
+    const updatePlaylistStickyCover = (): void => {
+      const cover = mainContent.querySelector<HTMLElement>("[data-playlist-cover-enlarge]");
+      const sticky = mainContent.querySelector<HTMLElement>("[data-playlist-sticky-cover]");
+      if (!cover || !sticky) return;
+      if (sticky.dataset.paletteReady !== "true") {
+        sticky.dataset.paletteReady = "true";
+        const source = new Image();
+        source.crossOrigin = "anonymous";
+        source.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext("2d", { willReadFrequently: true });
+            if (!context) return;
+            context.drawImage(source, 0, 0, canvas.width, canvas.height);
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+            const groups = [
+              { r: 0, g: 0, b: 0, n: 0 },
+              { r: 0, g: 0, b: 0, n: 0 },
+              { r: 0, g: 0, b: 0, n: 0 },
+            ];
+            let all = { r: 0, g: 0, b: 0, n: 0 };
+            for (let i = 0; i < pixels.length; i += 16) {
+              const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+              const max = Math.max(r, g, b), min = Math.min(r, g, b);
+              if (pixels[i + 3] < 128 || max < 48 || max - min < 18) continue;
+              const index = max === r ? 0 : max === g ? 1 : 2;
+              groups[index].r += r; groups[index].g += g; groups[index].b += b; groups[index].n++;
+              all.r += r; all.g += g; all.b += b; all.n++;
+            }
+            const colors = groups.map((group) => {
+              const value = group.n ? group : all;
+              const count = value.n || 1;
+              return `rgb(${Math.round(value.r / count)}, ${Math.round(value.g / count)}, ${Math.round(value.b / count)})`;
+            });
+            sticky.style.setProperty("--playlist-color-a", colors[0]);
+            sticky.style.setProperty("--playlist-color-b", colors[1]);
+            sticky.style.setProperty("--playlist-color-c", colors[2]);
+          } catch {
+            // Cross-origin Spotify covers may deny canvas reads; keep the neutral fallback palette.
+          }
+        };
+        source.src = sticky.dataset.playlistCoverUrl ?? "";
+      }
+      const mainTop = mainContent.getBoundingClientRect().top;
+      sticky.classList.toggle("is-visible", cover.getBoundingClientRect().bottom <= mainTop + 12);
+    };
+    mainContent.addEventListener("scroll", updatePlaylistStickyCover, { passive: true });
+    updatePlaylistStickyCover();
+  }
 }
 
 function clearPlaylistSelection(): void {
@@ -982,6 +1038,45 @@ function clearPlaylistSelection(): void {
 
 function renderSpotifySidebarPlaylists(): string {
   return renderSpotifySidebarPlaylistsMarkup({ page, filter, favoritesOnly, connected: spotifyConnected(), selectedPlaylistId, playlists: spotifyPlaylistList, icon });
+}
+
+function renderPlaylistSelection(): void {
+  syncNavigationHistory();
+  const main = app.querySelector<HTMLElement>(".main-content");
+  if (!main) {
+    render();
+    return;
+  }
+
+  const scrollTop = main.scrollTop;
+  main.innerHTML = pageRenderer.renderPage();
+  main.scrollTop = scrollTop;
+  lastRenderedPage = page;
+
+  app.querySelectorAll<HTMLElement>(".sidebar [data-playlist]").forEach((element) => {
+    const wrapper = element.closest<HTMLElement>(".spotify-sidebar-playlist");
+    wrapper?.classList.toggle("selected", element.dataset.playlist === selectedPlaylistId);
+  });
+  app.querySelectorAll<HTMLElement>(".sidebar [data-page]").forEach((button) => {
+    const destination = button.dataset.page as Page | undefined;
+    const selected = destination === "library"
+      ? page === "library" && button.dataset.filter === filter && !favoritesOnly
+      : destination === page;
+    button.classList.toggle("selected", selected);
+  });
+  app.querySelector(".sidebar [data-favorites]")?.classList.toggle("selected", page === "library" && favoritesOnly);
+
+  const backButton = app.querySelector<HTMLButtonElement>("[data-history-back]");
+  const forwardButton = app.querySelector<HTMLButtonElement>("[data-history-forward]");
+  if (backButton) backButton.disabled = navigationHistoryIndex <= 0;
+  if (forwardButton) forwardButton.disabled = navigationHistoryIndex < 0 || navigationHistoryIndex >= navigationHistory.length - 1;
+
+  bindEvents(true);
+  refreshCustomScrollbars(app);
+  captureNativeTooltips(app);
+  markOverflowingAlbumTitles();
+  observeResponsiveLayout(app, panelControls.isResizingPanel, markOverflowingAlbumTitles);
+  main.dispatchEvent(new Event("scroll"));
 }
 
 function sortLibraryTracks(items: Track[], enabled: boolean): Track[] {
@@ -995,7 +1090,14 @@ function patchAlbumCardPlaybackState(): void {
 }
 
 function scrollToCurrentTrack(): void {
-  scrollToTrack(app, current?.id);
+  const currentTrackId = current?.id;
+  if (!currentTrackId || !selectedPlaylistTracks.some((track) => track.id === currentTrackId)) {
+    window.requestAnimationFrame(() => {
+      app.querySelector<HTMLElement>(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    return;
+  }
+  scrollToTrack(app, currentTrackId);
 }
 
 function patchTrackRowPlaybackState(): void {
@@ -1007,35 +1109,148 @@ function openCurrentAlbum(): Promise<void> { return openAlbumPage(); }
 function closeAlbumCoverOverlay(): void {
   const overlay = app.querySelector<HTMLElement>("[data-album-cover-overlay]");
   if (!overlay) return;
-  overlay.remove();
-  albumCoverFocusTarget?.focus();
-  albumCoverFocusTarget = null;
+  if (overlay.dataset.closing === "true") return;
+  const finishClose = (): void => {
+    overlay.remove();
+    albumCoverFocusTarget?.focus();
+    albumCoverFocusTarget = null;
+  };
+  const cover = albumCoverFocusTarget;
+  const image = overlay.querySelector<HTMLImageElement>(".album-cover-zoom img");
+  if (!cover?.isConnected || !image || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    finishClose();
+    return;
+  }
+  const from = overlay.querySelector<HTMLElement>(".album-cover-zoom")?.getBoundingClientRect() ?? image.getBoundingClientRect();
+  const to = cover.getBoundingClientRect();
+  if (!from.width || !to.width) { finishClose(); return; }
+  overlay.dataset.closing = "true";
+  overlay.querySelectorAll<HTMLElement>(".album-cover-overlay-backdrop, .album-cover-zoom").forEach((element) => { element.style.pointerEvents = "none"; });
+  const translateX = to.left + to.width / 2 - (from.left + from.width / 2);
+  const translateY = to.top + to.height / 2 - (from.top + from.height / 2);
+  const scaleX = to.width / from.width;
+  const scaleY = to.height / from.height;
+  const animation = overlay.animate(
+    [
+      { opacity: 1, transform: "scale(1)" },
+      { opacity: 0, transform: `translate3d(${translateX}px,${translateY}px,0) scale(${scaleX},${scaleY})` },
+    ],
+    { duration: 230, easing: "cubic-bezier(.32,.72,.28,1)", fill: "forwards" },
+  );
+  void animation.finished.then(finishClose, finishClose);
 }
 
-function showAlbumCoverOverlay(): void {
-  if (!albumView?.artwork || app.querySelector("[data-album-cover-overlay]")) return;
-  const cover = app.querySelector<HTMLElement>("[data-album-cover-enlarge]");
+function showCoverOverlay(artwork: string, coverTitle: string, cover: HTMLElement | null): void {
+  if (!artwork || app.querySelector("[data-album-cover-overlay]")) return;
   const overlay = document.createElement("div");
   overlay.className = "album-cover-overlay";
   overlay.dataset.albumCoverOverlay = "true";
   albumCoverFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : cover;
-  const title = esc(albumView.name);
-  overlay.innerHTML = `<img class="album-cover-backdrop-art" src="${esc(safeUrl(albumView.artwork))}" alt="" aria-hidden="true"><button class="album-cover-overlay-backdrop" type="button" data-cover-overlay-close aria-label="앨범 커버 크게 보기 닫기"></button><div class="album-cover-zoom" role="dialog" aria-modal="true" aria-label="${title} 앨범 커버" tabindex="-1"><img src="${esc(safeUrl(albumView.artwork))}" alt="${title} 앨범 커버"><strong>${title}</strong></div>`;
+  const title = esc(coverTitle);
+  overlay.innerHTML = `<img class="album-cover-backdrop-art" src="${esc(safeUrl(artwork))}" alt="" aria-hidden="true"><div class="album-cover-color-glow" aria-hidden="true"></div><button class="album-cover-overlay-backdrop" type="button" data-cover-overlay-close aria-label="커버 크게 보기 닫기"></button><div class="album-cover-zoom" role="dialog" aria-modal="true" aria-label="${title} 커버" tabindex="-1"><img src="${esc(safeUrl(artwork))}" alt="${title} 커버"><span class="album-cover-light-shadow" aria-hidden="true"></span><span class="album-cover-reflection" aria-hidden="true"></span><span class="album-cover-reflection-edge" aria-hidden="true"></span><strong>${title}</strong></div>`;
   const zoomCard = overlay.querySelector<HTMLElement>(".album-cover-zoom");
+  const coverImage = zoomCard?.querySelector<HTMLImageElement>("img");
+  const sampleCoverColors = (source: CanvasImageSource, width: number, height: number): boolean => {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 24;
+      canvas.height = 24;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return false;
+      context.drawImage(source, 0, 0, width, height, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const samples: { r: number; g: number; b: number; weight: number }[] = [];
+      for (let i = 0; i < pixels.length; i += 4 * 9) {
+        const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        if (pixels[i + 3] < 120 || max < 48 || max - min < 20) continue;
+        samples.push({ r, g, b, weight: max - min });
+      }
+      samples.sort((a, b) => b.weight - a.weight);
+      const colors = samples.slice(0, 3).map(({ r, g, b }) => `rgb(${r}, ${g}, ${b})`);
+      if (colors.length) overlay.style.setProperty("--cover-color-a", colors[0]);
+      if (colors.length > 1) overlay.style.setProperty("--cover-color-b", colors[1]);
+      if (colors.length > 2) overlay.style.setProperty("--cover-color-c", colors[2]);
+      return colors.length > 0;
+    } catch {
+      return false;
+    }
+  };
+  const sampleLoadedCover = (): void => {
+    if (!coverImage?.naturalWidth || !coverImage.naturalHeight) return;
+    if (sampleCoverColors(coverImage, coverImage.naturalWidth, coverImage.naturalHeight)) return;
+    const fallbackCanvas = document.createElement("canvas");
+    fallbackCanvas.width = 24;
+    fallbackCanvas.height = 24;
+    const fallbackContext = fallbackCanvas.getContext("2d", { willReadFrequently: true });
+    if (!fallbackContext) return;
+    fallbackContext.fillStyle = "#725b66";
+    fallbackContext.fillRect(0, 0, 24, 24);
+    fallbackContext.fillStyle = "#47747b";
+    fallbackContext.fillRect(0, 0, 12, 24);
+    fallbackContext.fillStyle = "#b18c4d";
+    fallbackContext.fillRect(12, 0, 12, 24);
+    sampleCoverColors(fallbackCanvas, 24, 24);
+  };
+  if (coverImage?.complete) sampleLoadedCover();
+  else coverImage?.addEventListener("load", sampleLoadedCover, { once: true });
+  coverImage?.addEventListener("error", () => { overlay.classList.add("cover-colors-unavailable"); }, { once: true });
+  let targetX = 50, targetY = 50, currentX = 50, currentY = 50;
+  let animationFrame = 0;
+  const animateReflection = (): void => {
+    if (!overlay.isConnected) { animationFrame = 0; return; }
+    currentX += (targetX - currentX) * 0.12;
+    currentY += (targetY - currentY) * 0.12;
+    zoomCard?.style.setProperty("--cover-light-x", `${currentX}%`);
+    zoomCard?.style.setProperty("--cover-light-y", `${currentY}%`);
+    if (Math.abs(targetX - currentX) > .1 || Math.abs(targetY - currentY) > .1) animationFrame = requestAnimationFrame(animateReflection);
+    else animationFrame = 0;
+  };
+  const updateReflectionTarget = (): void => {
+    if (!animationFrame) animationFrame = requestAnimationFrame(animateReflection);
+  };
   overlay.addEventListener("pointermove", (event) => {
     if (!zoomCard || event.pointerType !== "mouse" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const bounds = zoomCard.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.top + bounds.width) {
+      targetX = 50;
+      targetY = 50;
+      updateReflectionTarget();
+      zoomCard.style.setProperty("--cover-shadow-x", "50%");
+      zoomCard.style.setProperty("--cover-shadow-y", "50%");
+      zoomCard.style.setProperty("--cover-shadow-opacity", "0");
+      zoomCard.style.setProperty("--cover-rotate-x", "0deg");
+      zoomCard.style.setProperty("--cover-rotate-y", "0deg");
+      return;
+    }
     const horizontal = Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width * 2 - 1));
     const vertical = Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1));
     zoomCard.style.setProperty("--cover-rotate-x", `${vertical * -5}deg`);
     zoomCard.style.setProperty("--cover-rotate-y", `${horizontal * 5}deg`);
+    targetX = (horizontal + 1) * 50;
+    targetY = (vertical + 1) * 50;
+    zoomCard.style.setProperty("--cover-shadow-x", `${100 - targetX}%`);
+    zoomCard.style.setProperty("--cover-shadow-y", `${100 - targetY}%`);
+    zoomCard.style.setProperty("--cover-shadow-opacity", "1");
+    updateReflectionTarget();
   });
   overlay.addEventListener("pointerleave", () => {
+    targetX = 50;
+    targetY = 50;
+    updateReflectionTarget();
+    zoomCard?.style.setProperty("--cover-shadow-x", "50%");
+    zoomCard?.style.setProperty("--cover-shadow-y", "50%");
+    zoomCard?.style.setProperty("--cover-shadow-opacity", "0");
     zoomCard?.style.setProperty("--cover-rotate-x", "0deg");
     zoomCard?.style.setProperty("--cover-rotate-y", "0deg");
   });
   app.querySelector(".app-shell")?.append(overlay);
   overlay.querySelector<HTMLElement>(".album-cover-zoom")?.focus();
+}
+
+function showAlbumCoverOverlay(): void {
+  if (!albumView?.artwork) return;
+  showCoverOverlay(albumView.artwork, albumView.name, app.querySelector<HTMLElement>("[data-album-cover-enlarge]"));
 }
 
 function ensureLyricsLoaded(): Promise<void> { return lyricsLoader.load(); }
@@ -1046,6 +1261,23 @@ function setSidebarCompact(compact: boolean, persist = true): void { panelSizing
 function bindEvents(centerOnly = false): void {
   if (!centerOnly) {
   if (!artistNavigationBound) {
+    app.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.matches("[data-personal-setting]")) return;
+      const setting = target.dataset.personalSetting;
+      if (setting !== "ambientBackground" && setting !== "motionEffects") return;
+      updatePersonalizationPreference(setting, target.checked);
+      applyPersonalizationPreferences();
+    });
+    app.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const swatch = target.closest<HTMLButtonElement>("[data-accent-color]");
+      if (!swatch) return;
+      const preferences = updatePersonalizationPreference("accentColor", swatch.dataset.accentColor ?? "");
+      applyPersonalizationPreferences(preferences);
+      app.querySelectorAll<HTMLButtonElement>("[data-accent-color]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.accentColor === preferences.accentColor)));
+    });
     app.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
@@ -1058,6 +1290,13 @@ function bindEvents(centerOnly = false): void {
         event.preventDefault();
         event.stopPropagation();
         showAlbumCoverOverlay();
+        return;
+      }
+      const playlistCover = target.closest<HTMLElement>("[data-playlist-cover-enlarge]");
+      if (playlistCover) {
+        event.preventDefault();
+        event.stopPropagation();
+        showCoverOverlay(playlistCover.dataset.coverArtwork ?? "", playlistCover.dataset.coverTitle ?? "플레이리스트", playlistCover);
         return;
       }
       if (target.closest<HTMLElement>("[data-open-album]")) {
@@ -1085,6 +1324,13 @@ function bindEvents(centerOnly = false): void {
         event.preventDefault();
         event.stopPropagation();
         showAlbumCoverOverlay();
+        return;
+      }
+      const playlistCover = target.closest<HTMLElement>("[data-playlist-cover-enlarge]");
+      if (playlistCover) {
+        event.preventDefault();
+        event.stopPropagation();
+        showCoverOverlay(playlistCover.dataset.coverArtwork ?? "", playlistCover.dataset.coverTitle ?? "플레이리스트", playlistCover);
         return;
       }
       if (target.closest<HTMLElement>("[data-open-album]")) {
@@ -1325,9 +1571,9 @@ function persistPlayback(): void {
 
 let spotifyAutoAdvanceLock = "";
 
-initAppUpdater();
+const startupUpdateCheck = initAppUpdater(() => setIntroStatus("업데이트 확인 중..."));
 startAppLifecycle({
-  bootLibrary: () => { void bootLibrary(); },
+  bootLibrary: () => { void startupUpdateCheck.then(() => bootLibrary()); },
   autoConnectSpotify: () => { void autoConnectSpotify(spotifyConnected(), spotifyReady, connectSpotify); },
   dismissIntro,
   nowPlayingOpen: () => nowPlayingOpen,

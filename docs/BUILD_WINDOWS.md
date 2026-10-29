@@ -95,17 +95,17 @@ src-tauri/target/release/bundle/nsis/
 src-tauri/target/release/bundle/msi/
 ```
 
-NSIS 설치 파일 이름에는 현재 앱 버전이 포함됩니다. 예를 들어 `0.5.5`의 파일명은 다음과 같습니다.
+NSIS 설치 파일 이름에는 현재 앱 버전이 포함됩니다. 예를 들어 `0.6.0`의 파일명은 다음과 같습니다.
 
 ```text
-src-tauri/target/release/bundle/nsis/MaeHwa Melo_0.5.5_x64-setup.exe
+src-tauri/target/release/bundle/nsis/MaeHwa Melo_0.6.0_x64-setup.exe
 ```
 
 GitHub Actions에서 0.5.5 NSIS 및 MSI 패키지 생성을 확인했고, NSIS 설치 후 앱 내 0.5.5 업데이트까지 확인했습니다. MSI 패키지도 생성되지만 별도 설치 검증은 하지 않았습니다. Windows SmartScreen 경고는 새 앱의 평판이 충분히 쌓이기 전에 나타날 수 있습니다.
 
 ## GitHub Releases 및 앱 자동 업데이트
 
-`.github/workflows/release.yml`은 `v*` 버전 태그가 푸시되면 Windows 설치 패키지와 Tauri 서명 파일을 만들고, GitHub Release와 `latest.json`을 게시합니다. 앱은 `latest.json`을 확인해 새 버전을 찾습니다. 일반적인 다음 배포는 아래 예시의 `0.5.6`을 실제 다음 버전으로 바꿔 진행합니다.
+`.github/workflows/release.yml`은 `v*` 버전 태그가 푸시되면 Windows 설치 패키지와 Tauri 서명 파일을 만들고, GitHub Release와 `latest.json`을 게시합니다. 앱은 `latest.json`을 확인해 새 버전을 찾습니다. 일반적인 다음 배포는 아래 예시의 `0.6.1`을 실제 다음 버전으로 바꿔 진행합니다.
 
 ### 최초 1회 GitHub 설정
 
@@ -115,15 +115,15 @@ GitHub Actions에서 0.5.5 NSIS 및 MSI 패키지 생성을 확인했고, NSIS �
 
 ### 새 버전 배포 순서
 
-1. **버전 번호를 정합니다.** 예: `0.5.5` 다음은 `0.5.6`. 먼저 `CHANGELOG.md` 맨 위에 새 버전의 날짜와 실제 변경 사항을 적습니다.
+1. **버전 번호를 정합니다.** 예: `0.6.0` 다음 patch는 `0.6.1`. 먼저 `CHANGELOG.md` 맨 위에 새 버전의 날짜와 실제 변경 사항을 적습니다.
 2. **버전을 올립니다.** `npm version patch --no-git-tag-version` 명령은 `package.json`과 `package-lock.json`을 함께 올립니다. 같은 새 버전을 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src/features/pages/renderers.ts`의 설정 화면 표기, `README.md`에도 반영합니다.
 3. **빌드 버전과 코드를 확인합니다.** `cargo check --manifest-path src-tauri/Cargo.toml`로 Cargo 잠금 파일을 갱신하고, `npm run build`와 `cargo check --manifest-path src-tauri/Cargo.toml`가 통과하는지 확인합니다. 변경 파일과 버전 번호가 모두 맞는지 확인합니다.
-4. **의도한 파일만 커밋하고 main에 푸시합니다.** 예: `git add -u`, 필요한 새 파일은 경로를 지정해 추가한 다음 `git status --short`로 스테이징 목록을 확인합니다. 이어서 `git commit -m "Release v0.5.6"`와 `git push origin main`을 실행합니다. `git add -A`는 백업, 로그, 로컬 설정 파일을 실수로 포함할 수 있으므로 피합니다.
+4. **의도한 파일만 커밋하고 main에 푸시합니다.** 예: `git add -u`, 필요한 새 파일은 경로를 지정해 추가한 다음 `git status --short`로 스테이징 목록을 확인합니다. 이어서 `git commit -m "Release v0.6.1"`와 `git push origin main`을 실행합니다. `git add -A`는 백업, 로그, 로컬 설정 파일을 실수로 포함할 수 있으므로 피합니다.
 5. **태그를 만들고 푸시합니다.** 커밋한 버전과 정확히 같은 태그를 사용합니다.
 
    ```powershell
-   git tag -a v0.5.6 -m "MaeHwa Melo v0.5.6"
-   git push origin v0.5.6
+   git tag -a v0.6.1 -m "MaeHwa Melo v0.6.1"
+   git push origin v0.6.1
    ```
 
 6. **Actions와 Release를 확인합니다.** 저장소의 **Actions → Release MaeHwa Melo**에서 작업이 성공해야 합니다. 성공한 Release에는 `latest.json`, NSIS `.exe` 설치 파일, MSI 설치 파일과 각각의 `.sig` 서명 파일이 있어야 합니다. Spotify Client ID 변수가 없으면 사전 검사에서 빌드를 중단합니다.

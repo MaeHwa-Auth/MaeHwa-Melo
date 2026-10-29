@@ -9,6 +9,7 @@ import { resolveRecentTracks } from "../library/recentTracks";
 import { artistLabel, artMarkup } from "../library/trackPresentation";
 import { albumPlaybackStatus } from "../library/renderers";
 import { icon } from "../../ui/icons";
+import { readPersonalizationPreferences } from "../../services/personalization";
 import { renderAlbumPage, renderEmpty, renderHomePage, renderPlaylistHeader, renderSettingsPage } from "./renderers";
 import type { LibrarySortMode } from "../library/controls";
 
@@ -82,7 +83,7 @@ export function createPageRenderer(options: PageRendererOptions) {
 
   function renderSettings(): string {
     const tracks = options.tracks();
-    return renderSettingsPage({ spotifyReady: options.spotifyReady(), spotifyConnected: options.spotifyConnected(), folders: options.folders(), localTrackCount: tracks.filter((track) => track.source === "local").length, icon: options.icon });
+    return renderSettingsPage({ spotifyReady: options.spotifyReady(), spotifyConnected: options.spotifyConnected(), folders: options.folders(), localTrackCount: tracks.filter((track) => track.source === "local").length, personalization: readPersonalizationPreferences(), icon: options.icon });
   }
 
   function renderArtist(): string {

@@ -22,6 +22,7 @@ export function createProgressController(options: ProgressControllerOptions): { 
   function patchProgress(): void {
     const current = options.current();
     const snapshot = options.snapshot();
+    options.app.querySelector<HTMLElement>(".app-shell")?.classList.toggle("is-playing", snapshot.playing);
     options.patchTrackRows();
     options.patchAlbumCards();
     options.setLyricClock(snapshot, current, performance.now());

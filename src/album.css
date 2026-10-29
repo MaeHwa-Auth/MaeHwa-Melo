@@ -18,6 +18,7 @@
 .album-card.is-playing>strong{color:#e0b28b}
 .track-row.is-current .row-play{display:block;cursor:pointer}
 .row-play{cursor:pointer}
+.app-shell:not(.is-playing) .equalizer b{animation-play-state:paused}
 .album-play{cursor:pointer}
 .album-card>strong,.album-card>small,.album-count{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .album-card>strong{color:#e6e0d6;font-size:10px;font-weight:500}.album-card>small{margin-top:5px;color:#99948b;font-size:9px}.album-count{margin-top:5px;color:#76736c;font-size:8px}
@@ -54,21 +55,44 @@
 .spotify-sidebar-playlist-art .ui-icon{width:15px;height:15px}
 .spotify-sidebar-playlist-art.liked-songs-placeholder{background:linear-gradient(135deg,#44305e,#9373b7);color:#f3e9ff}
 .spotify-sidebar-playlist.create{color:#99948b}
+.spotify-sidebar-playlist-cover,.spotify-sidebar-playlist-open{padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.spotify-sidebar-playlist-cover{display:grid;flex:0 0 44px;place-items:center;width:44px;height:44px;overflow:hidden;border-radius:5px;background:#29241f;color:#d4a37a}
+.spotify-sidebar-playlist-cover img{width:100%;height:100%;object-fit:cover}
+.spotify-sidebar-playlist-cover .ui-icon{width:15px;height:15px}
+.spotify-sidebar-playlist-open{display:block;flex:1 1 auto;min-width:0;overflow:hidden}
+.spotify-sidebar-playlist-open>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spotify-sidebar-playlist-cover:hover,.spotify-sidebar-playlist-cover:focus-visible{filter:brightness(1.12);outline:2px solid rgba(224,178,139,.8);outline-offset:2px}
+.playlist-cover-enlarge{cursor:pointer;transition:filter .18s ease,transform .18s ease}
+.playlist-cover-enlarge:hover,.playlist-cover-enlarge:focus-visible{filter:brightness(1.08);transform:scale(1.035);outline:2px solid rgba(224,178,139,.8);outline-offset:3px}
 .playlist-page-heading{display:flex;align-items:center;gap:22px;min-height:152px;margin:0 0 26px}
+.playlist-sticky-cover{position:sticky;top:0;z-index:8;height:0;pointer-events:none}
+.playlist-sticky-cover-art{position:absolute;top:-32px;left:calc(-1 * clamp(28px,4vw,68px));right:calc(-1 * clamp(28px,4vw,68px));height:76px;overflow:hidden;opacity:0;transform:translateY(-5px);transition:opacity .24s ease,transform .28s ease;mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.45) 42%,transparent 100%)}
+.playlist-sticky-cover.is-visible .playlist-sticky-cover-art{opacity:1;transform:translateY(0)}
+.playlist-sticky-cover-art::before{position:absolute;inset:-28px;background:radial-gradient(ellipse at 14% 20%,color-mix(in srgb,var(--playlist-color-a,#bb6c83) 92%,transparent),transparent 62%),radial-gradient(ellipse at 52% 10%,color-mix(in srgb,var(--playlist-color-b,#64918b) 88%,transparent),transparent 60%),radial-gradient(ellipse at 88% 24%,color-mix(in srgb,var(--playlist-color-c,#8c79b0) 88%,transparent),transparent 62%);filter:blur(24px);content:""}
+.playlist-sticky-cover-art::after{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.025),transparent 72%);content:""}
 .playlist-page-cover{display:block;flex:0 0 148px;width:148px;height:148px;object-fit:cover;border-radius:7px;background:linear-gradient(135deg,#44305e,#9373b7);box-shadow:0 12px 28px rgba(0,0,0,.25)}
 .album-page-cover-enlarge{cursor:pointer;transition:filter .18s ease,transform .18s ease}
 .album-page-cover-enlarge:hover,.album-page-cover-enlarge:focus-visible{filter:brightness(1.08);transform:scale(1.035);outline:2px solid rgba(224,178,139,.8);outline-offset:3px}
 .album-cover-overlay{position:fixed;isolation:isolate;inset:0;z-index:1000;display:grid;place-items:center;overflow:hidden;padding:32px;background:rgba(12,12,12,.28);animation:album-cover-overlay-in .32s ease-out both}
-.album-cover-backdrop-art{position:absolute;inset:-64px;z-index:-1;width:calc(100% + 128px);height:calc(100% + 128px);object-fit:cover;filter:blur(58px) brightness(.48) saturate(1.45);transform:scale(1.1)}
-.album-cover-overlay::after{position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 44%,rgba(28,24,20,.06) 0%,rgba(13,13,13,.3) 48%,rgba(7,7,7,.7) 100%);content:""}
-.album-cover-overlay-backdrop{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer}
-.album-cover-zoom{position:relative;z-index:1;display:grid;justify-items:center;gap:20px;width:min(76vw,74vh,720px);max-height:90vh;pointer-events:none;transform:perspective(1100px) rotateX(var(--cover-rotate-x,0deg)) rotateY(var(--cover-rotate-y,0deg));transform-style:preserve-3d;transition:transform .18s ease-out;will-change:transform}
-.album-cover-zoom img{display:block;width:100%;max-height:76vh;aspect-ratio:1;object-fit:contain;border:1px solid rgba(255,255,255,.16);border-radius:10px;box-shadow:0 34px 110px rgba(0,0,0,.62),0 0 70px rgba(255,255,255,.08);animation:album-cover-zoom-in .38s cubic-bezier(.2,.8,.2,1) both}
+body:has(.album-cover-overlay){overflow:hidden}
+body:has(.album-cover-overlay) .custom-scrollbar,body:has(.album-cover-overlay) .custom-scrollbar-thumb{display:none!important;opacity:0!important;pointer-events:none!important}
+.album-cover-backdrop-art{position:absolute;inset:-64px;z-index:0;width:calc(100% + 128px);height:calc(100% + 128px);object-fit:cover;filter:blur(58px) brightness(.72) saturate(2.2);transform:scale(1.1);animation:album-cover-image-drift 20s ease-in-out infinite alternate}
+.album-cover-color-glow{position:absolute;inset:-24%;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 18% 34%,color-mix(in srgb,var(--cover-color-a,#d8aa83) 96%,transparent),transparent 48%),radial-gradient(ellipse at 82% 28%,color-mix(in srgb,var(--cover-color-b,#586b98) 92%,transparent),transparent 46%),radial-gradient(ellipse at 54% 84%,color-mix(in srgb,var(--cover-color-c,#865f7d) 90%,transparent),transparent 48%);filter:blur(64px);opacity:.92;transform:translate3d(0,0,0) scale(1.04);animation:album-cover-colors-drift 12s ease-in-out infinite alternate}
+.album-cover-overlay::after{position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse at 50% 44%,rgba(28,24,20,.02) 0%,rgba(13,13,13,.14) 48%,rgba(7,7,7,.42) 100%);content:"";pointer-events:none}
+.album-cover-overlay-backdrop{position:absolute;inset:0;z-index:3;width:100%;height:100%;border:0;background:transparent;cursor:pointer}
+.album-cover-zoom{position:relative;z-index:4;display:grid;justify-items:center;gap:20px;width:min(76vw,74vh,720px);max-height:90vh;pointer-events:none;transform:perspective(1100px) rotateX(var(--cover-rotate-x,0deg)) rotateY(var(--cover-rotate-y,0deg));transform-style:preserve-3d;transition:transform .18s ease-out;will-change:transform}
+.album-cover-zoom img{display:block;width:100%;max-height:76vh;aspect-ratio:1;object-fit:contain;border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 34px 110px rgba(0,0,0,.62),0 0 70px rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.12);animation:album-cover-zoom-in .38s cubic-bezier(.2,.8,.2,1) both}
+.album-cover-light-shadow{position:absolute;inset:0 0 auto;width:100%;aspect-ratio:1;border-radius:10px;pointer-events:none;background:radial-gradient(ellipse at var(--cover-shadow-x,50%) var(--cover-shadow-y,50%),transparent 8%,rgba(0,0,0,.42) 78%);mix-blend-mode:multiply;opacity:var(--cover-shadow-opacity,0);transition:opacity .28s ease,background-position .28s ease}
+.album-cover-reflection{position:absolute;inset:0 0 auto;width:100%;aspect-ratio:1;overflow:hidden;border:1px solid rgba(255,255,255,.24);border-radius:10px;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.035) 18%,transparent 38%,rgba(255,255,255,.025) 56%,rgba(255,255,255,.18) 100%);background-size:100% 100%;box-shadow:inset 0 1px 1px rgba(255,255,255,.38),inset 0 -1px 1px rgba(255,255,255,.12);mix-blend-mode:screen;opacity:.46}
+.album-cover-reflection-edge{position:absolute;inset:0 0 auto;width:100%;aspect-ratio:1;overflow:hidden;border-radius:10px;pointer-events:none;background:linear-gradient(112deg,transparent 18%,rgba(255,255,255,.08) 31%,rgba(255,255,255,.92) 43%,rgba(255,255,255,.34) 46%,transparent 62%);background-size:320% 320%;background-position:var(--cover-light-x,50%) var(--cover-light-y,50%);mix-blend-mode:screen;opacity:.94;filter:blur(.35px);mask-image:linear-gradient(#000,transparent 78%)}
+.album-cover-reflection-edge::after{position:absolute;inset:0;border:1px solid rgba(255,255,255,.3);border-radius:10px;background:linear-gradient(145deg,rgba(255,255,255,.2),transparent 22% 78%,rgba(255,255,255,.12));box-shadow:inset 0 0 28px rgba(255,255,255,.08);content:""}
 .album-cover-zoom strong{max-width:min(100%,680px);overflow:hidden;padding:0 18px;color:#fff;text-align:center;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:600;letter-spacing:.02em;text-shadow:0 2px 18px rgba(0,0,0,.65)}
 @keyframes album-cover-overlay-in{from{opacity:0}to{opacity:1}}
+@keyframes album-cover-colors-drift{0%{transform:translate3d(-2%,1%,0) scale(1.04)}50%{transform:translate3d(2%,-1%,0) scale(1.1)}100%{transform:translate3d(0,2%,0) scale(1.06)}}
+@keyframes album-cover-image-drift{0%{transform:scale(1.12) translate3d(-1.5%,1%,0)}100%{transform:scale(1.16) translate3d(1.5%,-1%,0)}}
 @keyframes album-cover-zoom-in{from{opacity:.6;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 @media(max-width:600px){.album-cover-overlay{padding:18px}.album-cover-zoom{width:min(88vw,72vh)}.album-cover-zoom img{max-height:72vh}}
-@media(prefers-reduced-motion:reduce){.album-cover-overlay,.album-cover-zoom img{animation:none}}
+@media(prefers-reduced-motion:reduce){.album-cover-overlay,.album-cover-zoom img,.album-cover-color-glow,.album-cover-backdrop-art{animation:none}.album-cover-zoom{transition:none}}
 .playlist-page-copy{min-width:0;align-self:center}
 .playlist-page-copy h1{margin:7px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 clamp(26px,3vw,38px)/1.2 Manrope,'Noto Sans KR',sans-serif;letter-spacing:-1.2px}
 .playlist-page-description{display:-webkit-box;max-width:740px;margin:9px 0 0;overflow:hidden;color:#b1aca2;font-size:12px;line-height:1.6;-webkit-box-orient:vertical;-webkit-line-clamp:2}

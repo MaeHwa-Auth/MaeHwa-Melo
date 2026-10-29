@@ -31,7 +31,11 @@ export function patchProgressUi(options: ProgressUiOptions): void {
     muteButton.setAttribute("aria-label", muteButton.title);
   }
   const volumeSlider = app.querySelector<HTMLInputElement>("[data-volume]");
-  if (volumeSlider && document.activeElement !== volumeSlider) volumeSlider.value = String(snapshot.volume);
+  if (volumeSlider) {
+    if (document.activeElement !== volumeSlider) volumeSlider.value = String(snapshot.volume);
+    const volumeProgress = `${Math.min(100, Math.max(0, snapshot.volume * 100))}%`;
+    if (volumeSlider.style.getPropertyValue("--progress") !== volumeProgress) volumeSlider.style.setProperty("--progress", volumeProgress);
+  }
   const progress = app.querySelector<HTMLInputElement>("[data-seek]");
   if (progress) {
     const nextMax = String(Math.max(snapshot.duration, 1));

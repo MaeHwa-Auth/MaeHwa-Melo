@@ -39,9 +39,24 @@ function makeControl(host: HTMLElement, axis: Axis): ScrollbarControl {
     element.classList.toggle("is-visible", visible);
     thumb.classList.toggle("is-visible", visible);
   };
+  let playlistHideTimer = 0;
+  const keepPlaylistScrollbarVisible = (): void => {
+    if (!playlistScrollbar) return;
+    window.clearTimeout(playlistHideTimer);
+    setPlaylistScrollbarVisible(true);
+  };
+  const schedulePlaylistScrollbarHide = (): void => {
+    if (!playlistScrollbar) return;
+    window.clearTimeout(playlistHideTimer);
+    playlistHideTimer = window.setTimeout(() => setPlaylistScrollbarVisible(false), 260);
+  };
   if (playlistScrollbar) {
-    host.addEventListener("mouseenter", () => setPlaylistScrollbarVisible(true));
-    host.addEventListener("mouseleave", () => setPlaylistScrollbarVisible(false));
+    host.addEventListener("mouseenter", keepPlaylistScrollbarVisible);
+    host.addEventListener("mouseleave", schedulePlaylistScrollbarHide);
+    for (const rail of [element, thumb]) {
+      rail.addEventListener("mouseenter", keepPlaylistScrollbarVisible);
+      rail.addEventListener("mouseleave", schedulePlaylistScrollbarHide);
+    }
   }
   document.body.append(element);
   document.body.append(thumb);
@@ -140,12 +155,11 @@ function updateControl(host: HTMLElement, control?: ScrollbarControl): void {
     const playlistRail = host.classList.contains("spotify-sidebar-playlists");
     const compactSidebar = playlistRail && host.closest(".sidebar")?.classList.contains("is-compact");
     const railWidth = playlistRail ? 4 : adjacentPanel ? 6 : 8;
-    // Align the rail to the visible main-content edge; the panel itself owns
-    // the adjacent boundary and may cover the rest of the workspace.
-    const railRight = playlistRail && !compactSidebar
-      ? Math.min(window.innerWidth, rect.right + 10)
-      : panelLeft !== undefined ? Math.min(rect.right, panelLeft) : rect.right;
-    const railLeft = railRight - railWidth;
+    // Keep the Spotify playlist rail on the sidebar's inner left edge. Other
+    // vertical rails stay aligned to the right edge of their scroll hosts.
+    const railLeft = playlistRail
+      ? Math.max(0, rect.left - (compactSidebar ? 5 : 6))
+      : (panelLeft !== undefined ? Math.min(rect.right, panelLeft) : rect.right) - railWidth;
     control.element.style.left = `${railLeft}px`;
     control.element.style.top = `${rect.top + 3}px`;
     control.element.style.width = `${railWidth}px`;
