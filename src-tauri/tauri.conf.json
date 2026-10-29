@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MaeHwa Melo",
+  "version": "0.5.4",
+  "identifier": "studio.maehwa.music",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:14200",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "MaeHwa Melo",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 760,
+        "minHeight": 600,
+        "decorations": false,
+        "backgroundColor": "#11110f"
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      },
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https: data: blob:; media-src 'self' asset: http://asset.localhost https: blob:; connect-src ipc: http://ipc.localhost https://api.spotify.com https://accounts.spotify.com https://*.spotify.com wss://*.spotify.com https://lrclib.net; frame-src https://sdk.scdn.co https://*.spotify.com; worker-src 'self' blob:; script-src 'self' https://sdk.scdn.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/maehwa-melo.ico",
+        "uninstallerIcon": "icons/maehwa-melo.ico",
+        "languages": ["Korean"]
+      }
+    },
+    "targets": [
+      "nsis",
+      "msi"
+    ],
+    "icon": [
+      "icons/maehwa-melo.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "untrusted comment: minisign public key: D7BB3017555696E8\nRWTollZVFzC71+mCZEpjMY6YGhtcqaE9zjzOJqfvBxNGmnJJ58hicQHp\n",
+      "endpoints": [
+        "https://github.com/MaeHwa-Auth/MaeHwa-Melo/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

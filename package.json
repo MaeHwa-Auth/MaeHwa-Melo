@@ -1,0 +1,25 @@
+{
+  "name": "maehwa-melo",
+  "private": true,
+  "version": "0.5.4",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 14200 --strictPort",
+    "dev:tauri": "tauri dev",
+    "build": "tsc --noEmit && vite build --configLoader runner",
+    "build:release": "npm run build && tauri build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "@tauri-apps/plugin-opener": "^2.5.0",
+    "@tauri-apps/plugin-process": "^2.3.0",
+    "@tauri-apps/plugin-updater": "^2.9.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

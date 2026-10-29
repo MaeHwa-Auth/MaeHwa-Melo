@@ -1,0 +1,29 @@
+[package]
+name = "maehwa-melo"
+version = "0.5.4"
+description = "MaeHwa Melo desktop player"
+authors = ["Maehwa Studio"]
+edition = "2021"
+
+[lib]
+name = "maehwa_melo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lofty = "0.22"
+walkdir = "2"
+base64 = "0.22"
+tokio = { version = "1", features = ["sync", "time"] }
+reqwest = { version = "0.13", features = ["json"] }
+rayon = "1.8"
