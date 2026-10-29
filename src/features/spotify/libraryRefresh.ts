@@ -1,4 +1,5 @@
-import { spotifyLibrary, spotifyPlaylists, spotifyRateLimitRemaining, SpotifyRateLimitError } from "../../services/spotify";
+import { spotifyFollowingArtists, spotifyLibrary, spotifyPlaylists, spotifyRateLimitRemaining, SpotifyRateLimitError, spotifySavedAlbums } from "../../services/spotify";
+import type { SpotifySavedAlbum, SpotifyTopArtist } from "../../services/spotify";
 import type { Track } from "../../types";
 import type { persistLibrary } from "../../services/library";
 
@@ -10,6 +11,8 @@ interface SpotifyLibraryRefreshOptions {
   setSpotifyTracks: (tracks: Track[]) => void;
   setTracks: (tracks: Track[]) => void;
   setSpotifyPlaylistList: (playlists: SpotifyPlaylist[]) => void;
+  setSpotifyFollowingArtists: (artists: SpotifyTopArtist[]) => void;
+  setSpotifySavedAlbums: (albums: SpotifySavedAlbum[]) => void;
   mergeTracks: (...groups: Track[][]) => Track[];
   persistLibrary: typeof persistLibrary;
   showNotice: (message: string) => void;
@@ -56,6 +59,18 @@ export function createSpotifyLibraryRefresh(options: SpotifyLibraryRefreshOption
           return;
         }
         options.showNotice(error instanceof Error ? `Spotify 플레이리스트를 읽을 수 없습니다: ${error.message}` : "Spotify 플레이리스트 조회에 실패했습니다.");
+      }
+      try {
+        options.setSpotifyFollowingArtists(await spotifyFollowingArtists());
+      } catch (error) {
+        options.setSpotifyFollowingArtists([]);
+        options.showNotice(error instanceof Error ? `Spotify 팔로우 아티스트를 읽을 수 없습니다: ${error.message}` : "Spotify 팔로우 아티스트 조회에 실패했습니다.");
+      }
+      try {
+        options.setSpotifySavedAlbums(await spotifySavedAlbums());
+      } catch (error) {
+        options.setSpotifySavedAlbums([]);
+        options.showNotice(error instanceof Error ? `Spotify 저장 앨범을 읽을 수 없습니다: ${error.message}` : "Spotify 저장 앨범 조회에 실패했습니다.");
       }
       options.persistLibrary(options.folders(), options.tracks());
     })();

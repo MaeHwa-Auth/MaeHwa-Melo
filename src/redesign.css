@@ -102,7 +102,7 @@ input, textarea, [contenteditable="true"] { -webkit-user-select:text; user-selec
 .side-group { margin-bottom: 28px; }
 .side-label { margin: 0 12px 10px; color: #918c81; font-size: 11px; letter-spacing: .02em; }
 .spotify-playlist-divider{height:1px;flex:0 0 1px;margin:0 12px 20px;background:var(--line)}
-.spotify-playlist-section>.side-label{margin-bottom:14px}
+.spotify-sidebar-group>.side-label{margin-bottom:14px}
 .nav-link { min-height: 46px; margin: 3px 0; padding: 0 12px; gap: 13px; border-radius: 6px; font-size: 14px; }
 .nav-link>span:first-child { width: 21px; height: 21px; display:grid; place-items:center; color:#aaa69d; }
 .nav-link.selected { background: #24241f; color: #f2e7d8; }
@@ -237,7 +237,7 @@ input, textarea, [contenteditable="true"] { -webkit-user-select:text; user-selec
 .personal-accent-copy b { color:#e5e0d7; font-size:13px; font-weight:500; }
 .personal-accent-copy small { margin-top:5px; color:#89857d; font-size:11px; }
 .personal-accent-palette { display:flex; align-items:center; gap:10px; }
-.personal-accent-swatch { width:25px; height:25px; flex:0 0 25px; padding:0; border:2px solid rgba(255,255,255,.18); border-radius:50%; background:var(--swatch-color); box-shadow:0 0 0 0 transparent; cursor:pointer; transition:transform .16s,border-color .16s,box-shadow .16s; }
+.personal-accent-swatch { width:25px; height:25px; flex:0 0 25px; padding:0; border:2px solid rgba(255,255,255,.18); border-radius:50%; background-color:var(--swatch-color,#d5aa83); background-image:none; box-shadow:0 0 0 0 transparent; cursor:pointer; transition:transform .16s,border-color .16s,box-shadow .16s; }
 .personal-accent-swatch:hover { transform:scale(1.12); }
 .personal-accent-swatch[aria-pressed="true"] { border-color:#fff4e7; box-shadow:0 0 0 3px color-mix(in srgb,var(--swatch-color) 45%,transparent); }
 .personal-setting-row { min-height:64px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-top:1px solid rgba(236,231,217,.07); cursor:pointer; }
@@ -463,16 +463,21 @@ body.has-intro .custom-scrollbar-thumb {
 .sidebar.is-compact .nav-link>.spotify-glyph .ui-icon{width:28px;height:28px}
 .sidebar.is-compact .nav-count{width:0;margin:0;overflow:hidden;opacity:0}
 .sidebar .spotify-sidebar-playlist>span:last-child{max-width:150px;transition:max-width .22s ease,opacity .18s ease}
-.sidebar.is-compact .spotify-sidebar-playlists>p{height:0;margin:0;padding:0;overflow:hidden;opacity:0;transition:height .22s ease,opacity .16s ease,margin .22s ease}
+.sidebar.is-compact .spotify-sidebar-group>p{height:0;margin:0;padding:0;overflow:hidden;opacity:0;transition:height .22s ease,opacity .16s ease,margin .22s ease}
 .sidebar.is-compact .spotify-playlist-section{min-width:0;margin:0 0 16px;padding:0;overflow:hidden}
 .sidebar.is-compact .spotify-playlist-divider{width:56px;margin:0 auto 16px}
-.sidebar.is-compact .spotify-playlist-section>.side-label{height:0;margin:0;padding:0;overflow:hidden;opacity:0}
+.sidebar.is-compact .spotify-sidebar-group>.side-label{height:0;margin:0;padding:0;overflow:hidden;opacity:0}
+.sidebar.is-compact .spotify-sidebar-group{display:contents}
 .sidebar.is-compact .spotify-sidebar-playlists{display:flex;flex-direction:column;align-items:center;gap:13px;box-sizing:border-box;width:100%;margin:0;padding:4px;overflow-x:hidden;scrollbar-width:none}
 .sidebar.is-compact .spotify-sidebar-playlists::-webkit-scrollbar{display:none}
 .sidebar.is-compact .spotify-sidebar-playlist{position:relative;left:auto;box-sizing:border-box;width:56px;min-width:56px;height:56px;min-height:56px;flex:0 0 56px;justify-content:center;gap:0;margin:0 auto;padding:0;border:0;border-radius:8px;transform:none}
 .sidebar.is-compact .spotify-sidebar-playlist:not(.create){display:grid;place-items:center}
 .sidebar.is-compact .spotify-sidebar-playlist-cover{box-sizing:border-box;flex:0 0 56px;width:56px;height:56px;border-radius:8px}
 .sidebar.is-compact .spotify-sidebar-playlist-open{position:absolute;inset:0;width:100%;height:100%;border-radius:8px}
+.sidebar.is-compact .spotify-sidebar-library-item{box-sizing:border-box;width:56px;min-width:56px;height:56px;min-height:56px;flex:0 0 56px;justify-content:center;gap:0;margin:0 auto;padding:0;border:0;border-radius:8px}
+.sidebar.is-compact .spotify-sidebar-library-item>span:last-child{display:none}
+.sidebar.is-compact .spotify-sidebar-library-art{box-sizing:border-box;flex:0 0 48px;width:48px;height:48px;border-radius:8px}
+.sidebar.is-compact .spotify-sidebar-library-art.round{border-radius:50%}
 .sidebar.is-compact .spotify-sidebar-playlist-open>span{display:none}
 .sidebar.is-compact .spotify-sidebar-playlist.selected .spotify-sidebar-playlist-art{box-shadow:0 0 0 2px rgba(226,184,143,.6),0 0 16px rgba(216,164,123,.38);filter:brightness(1.15)}
 .sidebar .spotify-sidebar-playlist-art{transition:box-shadow .18s ease,filter .18s ease}
@@ -564,27 +569,29 @@ body.has-intro .custom-scrollbar-thumb {
 .artist-page-back{margin-bottom:12px}
 .now-playing-next-track b{font-size:16px}
 .spotify-artist-header{display:flex;align-items:flex-end;gap:24px;margin:8px 0 28px;padding:20px;border-radius:10px;background:linear-gradient(135deg,#34342c,#1d1d1b 70%)}
-.spotify-artist-image-link,.spotify-artist-image{display:block;width:180px;height:180px;flex:0 0 180px;overflow:hidden;border-radius:50%;background:#292925}
+.spotify-artist-image-enlarge,.spotify-artist-image{display:block;width:180px;height:180px;flex:0 0 180px;overflow:hidden;border:0;border-radius:50%;background:#292925}
+.spotify-artist-image-enlarge{padding:0;cursor:zoom-in}
 .spotify-artist-image{object-fit:cover}
 .spotify-artist-image-empty{display:grid;place-items:center;color:#98948b;font-size:54px}
 .spotify-artist-header>div{min-width:0}
 .spotify-artist-header h1{margin:7px 0;font-size:clamp(28px,4vw,48px);line-height:1.1}
 .spotify-artist-header p{margin:7px 0;color:#b9b5ab;font-size:13px}
 .spotify-artist-header .spotify-artist-genres{color:#8fba9c}
-.spotify-artist-link{display:inline-block;margin-top:8px;color:#1ed760;font-size:12px;font-weight:650}
+.spotify-artist-header h1 .spotify-artist-link{color:inherit;text-decoration:none;transition:color .15s}
+.spotify-artist-header h1 .spotify-artist-link:hover{color:#1ed760;text-decoration:underline;text-underline-offset:4px}
 .spotify-artist-releases{padding:0 4px}
 .spotify-artist-releases .section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .spotify-artist-releases .section-heading h2{margin:0;font-size:19px}
 .spotify-artist-releases .section-heading span{color:#aaa69d;font-size:11px}
 .spotify-artist-albums{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:14px}
-.spotify-artist-album{min-width:0;padding:9px;border:1px solid rgba(236,231,217,.08);border-radius:8px;background:#20201e;color:#ece8df;text-decoration:none;transition:background .15s,border-color .15s}
+.spotify-artist-album{display:block;width:100%;min-width:0;padding:9px;border:1px solid rgba(236,231,217,.08);border-radius:8px;background:#20201e;color:#ece8df;font:inherit;text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
 .spotify-artist-album:hover{border-color:rgba(30,215,96,.4);background:#272723}
 .spotify-artist-album img,.spotify-artist-album-empty{display:grid;width:100%;aspect-ratio:1;place-items:center;margin-bottom:9px;border-radius:5px;background:#171715;object-fit:cover}
 .spotify-artist-album-empty{color:#89857d;font-size:32px}
 .spotify-artist-album b,.spotify-artist-album small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .spotify-artist-album b{font-size:12px}
 .spotify-artist-album small{margin-top:5px;color:#99958c;font-size:10px}
-@media(max-width:620px){.spotify-artist-header{align-items:center;gap:14px;padding:14px}.spotify-artist-image-link,.spotify-artist-image{width:112px;height:112px;flex-basis:112px}.spotify-artist-header h1{font-size:24px}.spotify-artist-albums{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:9px}}
+@media(max-width:620px){.spotify-artist-header{align-items:center;gap:14px;padding:14px}.spotify-artist-image-enlarge,.spotify-artist-image{width:112px;height:112px;flex-basis:112px}.spotify-artist-header h1{font-size:24px}.spotify-artist-albums{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:9px}}
 .library-heading-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .metadata-repair-trigger{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .metadata-repair-trigger .ui-icon{width:15px;height:15px}

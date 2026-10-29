@@ -16,7 +16,6 @@ export function createWindowAndPanelControls(options: WindowAndPanelControlsOpti
   let sidebarCleanupTimer: number | null = null;
   let panelResizeFrame: number | null = null;
   let resizingPanel = false;
-
   function bindPanelResizer(panelResizer = options.app.querySelector<HTMLElement>("[data-now-playing-resizer]")): void {
     if (!panelResizer || panelResizer.dataset.bound === "true") return;
     panelResizer.dataset.bound = "true";

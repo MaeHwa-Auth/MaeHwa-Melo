@@ -30,6 +30,8 @@ export function createLyricsUi(options: LyricsUiOptions) {
     if (!card || !options.takeEntryPending()) return;
     const style = getComputedStyle(card);
     const height = card.getBoundingClientRect().height || 0;
+    const animatedProperties = ["overflow", "opacity", "height", "padding-top", "padding-bottom", "margin-bottom", "transform", "visibility"];
+    const previousInlineStyles = new Map(animatedProperties.map((property) => [property, card.style.getPropertyValue(property)]));
     const finalState = {
       opacity: 1,
       height: `${height}px`,
@@ -47,14 +49,22 @@ export function createLyricsUi(options: LyricsUiOptions) {
     card.style.transform = "translateY(-5px)";
     card.style.visibility = "hidden";
     requestAnimationFrame(() => {
+      if (!card.isConnected) return;
       card.style.visibility = "visible";
-      card.animate(
+      const animation = card.animate(
         [
           { opacity: 0, height: "0px", paddingTop: "0px", paddingBottom: "0px", marginBottom: "0px", transform: "translateY(-5px)" },
           finalState,
         ],
-        { duration: 360, easing: "cubic-bezier(.64,0,.78,0)" },
+        { duration: 360, easing: "cubic-bezier(.64,0,.78,0)", fill: "both" },
       );
+      void animation.finished.then(() => {
+        for (const [property, value] of previousInlineStyles) {
+          if (value) card.style.setProperty(property, value);
+          else card.style.removeProperty(property);
+        }
+        animation.cancel();
+      }).catch(() => undefined);
     });
   }
 

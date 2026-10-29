@@ -43,8 +43,10 @@
 @media (min-width:621px) and (max-width:1080px){.main-content .track-head,.main-content .track-row{grid-template-columns:34px minmax(180px,2fr) minmax(75px,.7fr) 60px 55px 24px;column-gap:9px}}
 @media (min-width:621px) and (max-width:850px){.main-content .track-head,.main-content .track-row{grid-template-columns:28px minmax(170px,2fr) minmax(70px,.7fr) 50px 48px 22px;column-gap:9px}}
 .spotify-playlist-section{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;max-height:none;margin:0 -4px 16px 0;padding:0 4px 0 0}
-.spotify-sidebar-playlists{display:flex;flex:1 1 auto;flex-direction:column;gap:3px;min-height:0;max-height:none;overflow-y:auto}
-.spotify-sidebar-playlists>p{margin:2px 12px;color:#89857d;font-size:9px;line-height:1.6}
+.spotify-sidebar-playlists{display:flex;flex:1 1 auto;flex-direction:column;gap:0;min-height:0;max-height:none;overflow-y:auto}
+.spotify-sidebar-group{display:flex;flex:0 0 auto;flex-direction:column;gap:3px;padding:0 0 10px}
+.spotify-sidebar-group>.side-label{margin:2px 12px 8px}
+.spotify-sidebar-group>p{margin:2px 12px 8px;color:#89857d;font-size:9px;line-height:1.6}
 .spotify-sidebar-playlist{display:flex;flex:0 0 auto;align-items:center;gap:11px;width:100%;min-width:0;min-height:54px;padding:6px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:#a6a29a;text-align:left;font-size:12px;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
 .spotify-sidebar-playlist:hover{background:rgba(231,221,201,.07);color:#f1ece3}
 .spotify-sidebar-playlist.selected{background:rgba(213,170,131,.12);border-color:rgba(213,170,131,.38);color:#f5eee4;box-shadow:inset 0 0 0 1px rgba(213,170,131,.18),0 2px 10px rgba(0,0,0,.25)}
@@ -62,6 +64,16 @@
 .spotify-sidebar-playlist-open{display:block;flex:1 1 auto;min-width:0;overflow:hidden}
 .spotify-sidebar-playlist-open>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .spotify-sidebar-playlist-cover:hover,.spotify-sidebar-playlist-cover:focus-visible{filter:brightness(1.12);outline:2px solid rgba(224,178,139,.8);outline-offset:2px}
+.spotify-sidebar-library-item{display:flex;flex:0 0 auto;align-items:center;gap:11px;width:100%;min-width:0;min-height:54px;padding:6px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:#a6a29a;text-align:left;font-size:12px;transition:background .18s ease,color .18s ease,border-color .18s ease}
+.spotify-sidebar-library-item:hover,.spotify-sidebar-library-item:focus-visible{background:rgba(231,221,201,.07);color:#f1ece3}
+.spotify-sidebar-library-item>span:last-child{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spotify-sidebar-library-item b,.spotify-sidebar-library-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spotify-sidebar-library-item b{font-size:11px;font-weight:500}
+.spotify-sidebar-library-item small{margin-top:3px;color:#858179;font-size:9px}
+.spotify-sidebar-library-art{display:grid;flex:0 0 44px;place-items:center;width:44px;height:44px;overflow:hidden;border-radius:5px;background:#29241f;color:#d4a37a}
+.spotify-sidebar-library-art.round{border-radius:50%}
+.spotify-sidebar-library-art img{width:100%;height:100%;object-fit:cover}
+.spotify-sidebar-library-art .ui-icon{width:15px;height:15px}
 .playlist-cover-enlarge{cursor:pointer;transition:filter .18s ease,transform .18s ease}
 .playlist-cover-enlarge:hover,.playlist-cover-enlarge:focus-visible{filter:brightness(1.08);transform:scale(1.035);outline:2px solid rgba(224,178,139,.8);outline-offset:3px}
 .playlist-page-heading{display:flex;align-items:center;gap:22px;min-height:152px;margin:0 0 26px}
@@ -95,6 +107,8 @@ body:has(.album-cover-overlay) .custom-scrollbar,body:has(.album-cover-overlay) 
 @media(prefers-reduced-motion:reduce){.album-cover-overlay,.album-cover-zoom img,.album-cover-color-glow,.album-cover-backdrop-art{animation:none}.album-cover-zoom{transition:none}}
 .playlist-page-copy{min-width:0;align-self:center}
 .playlist-page-copy h1{margin:7px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 clamp(26px,3vw,38px)/1.2 Manrope,'Noto Sans KR',sans-serif;letter-spacing:-1.2px}
+.playlist-page-copy h1 a.playlist-title-external-link{display:inline-block;max-width:100%;color:inherit;text-decoration:none;cursor:pointer;transition:color .15s ease}
+.playlist-page-copy h1 a.playlist-title-external-link:hover,.playlist-page-copy h1 a.playlist-title-external-link:focus-visible{color:var(--accent,#d2a47b)}
 .playlist-page-description{display:-webkit-box;max-width:740px;margin:9px 0 0;overflow:hidden;color:#b1aca2;font-size:12px;line-height:1.6;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .playlist-page-meta{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 0;color:#99948a;font-size:11px}
 .playlist-page-meta span{color:#d2a47b}

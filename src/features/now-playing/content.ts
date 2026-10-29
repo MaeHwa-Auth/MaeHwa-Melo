@@ -1,5 +1,6 @@
 import type { Track } from "../../types";
 import type { TrackLyrics } from "../../services/lrclib";
+import { currentQueueIndex } from "../playback/queue";
 import { renderLyricsCard, renderNowPlayingPanel } from "./renderers";
 
 interface NowPlayingContentOptions {
@@ -29,7 +30,9 @@ export function createNowPlayingContent(options: NowPlayingContentOptions) {
 
   function renderPanel(): string {
     const current = options.current();
-    const upcoming = options.queue().filter((track) => track.id !== current?.id).slice(0, 1);
+    const queue = options.queue();
+    const currentIndex = currentQueueIndex(current, queue);
+    const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1, currentIndex + 2) : [];
     return renderNowPlayingPanel({ current, playlistName: options.playlistName(), upcoming, favoriteIds: options.favoriteIds(), lyricsEnabled: options.lyricsEnabled(), renderLyrics, artMarkup: options.artMarkup, artistLabel: options.artistLabel, icon: options.icon });
   }
 

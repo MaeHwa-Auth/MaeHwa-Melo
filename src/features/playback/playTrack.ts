@@ -36,6 +36,7 @@ interface PlayTrackOptions {
 export function createTrackPlayback(options: PlayTrackOptions) {
   return async function playTrack(track: Track, queue: Track[] = [track], displayContext?: string): Promise<void> {
     try {
+      const previousTrack = options.current();
       if (displayContext) {
         options.setPlaybackPlaylistName(displayContext);
       } else if (queue !== options.playQueue()) {
@@ -61,7 +62,7 @@ export function createTrackPlayback(options: PlayTrackOptions) {
       let snapshot = options.snapshot();
       options.setSnapshot({ ...snapshot, queue: safeQueue.filter((item) => !sameTrackId(item, track)) });
       if (track.source === "local") {
-        await options.spotifyPlayer.pause().catch(() => undefined);
+        if (previousTrack?.source === "spotify") void options.spotifyPlayer.pause().catch(() => undefined);
         options.setCurrent(track);
         snapshot = options.snapshot();
         options.setSnapshot({ ...snapshot, current: track, playing: true, position: seekToRestore, duration: track.duration ?? 0 });
@@ -80,8 +81,8 @@ export function createTrackPlayback(options: PlayTrackOptions) {
         options.setSnapshot({ ...snapshot, current: track, playing: true, position: 0, duration: track.duration ?? 0 });
         options.setRestoreState({ ...options.restoreState(), position: 0, duration: track.duration ?? 0 });
         options.persistPlayback();
-        await options.spotifyPlayer.play(track);
         options.patchCurrentTrackUi();
+        await options.spotifyPlayer.play(track, 0, safeQueue);
       }
     } catch (error) {
       if (options.pendingTrackSelection()?.trackId === (track.spotifyUri ?? track.id)) options.setPendingTrackSelection(null);

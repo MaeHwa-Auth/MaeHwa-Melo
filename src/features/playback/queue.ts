@@ -28,6 +28,6 @@ export function safeQueueForTrack(track: Track, queue: Track[] = [track]): Track
 
 export function nextQueueIndex(currentTrack: Track | null, queue: Track[]): number {
   if (!currentTrack) return -1;
-  const index = queue.findIndex((track) => sameTrackId(track, currentTrack));
+  const index = currentQueueIndex(currentTrack, queue);
   return index >= 0 ? index + 1 : 0;
 }

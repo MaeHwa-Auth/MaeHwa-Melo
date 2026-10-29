@@ -14,7 +14,6 @@ interface LibraryPageEventsOptions {
   setFavoritesOnly: (value: boolean) => void;
   clearPlaylistSelection: () => void;
   loadPlaylist: (id: string, selected: boolean, preserveScroll: boolean, autoScroll: boolean) => void;
-  playbackPlaylistId: () => string | null;
   current: () => Track | null;
   render: () => void;
   scrollToCurrentTrack: () => void;
@@ -56,10 +55,6 @@ export function bindLibraryPageEvents(options: LibraryPageEventsOptions): void {
     options.setPage(element.dataset.page as Page);
     options.setFavoritesOnly(false);
     if (element.dataset.filter) {
-      if (element.dataset.filter === "spotify") {
-        void options.loadPlaylist(options.playbackPlaylistId() ?? "liked-songs", false, true, true);
-        return;
-      }
       options.setFilter(element.dataset.filter as Filter);
       options.clearPlaylistSelection();
     } else if (options.getPage() === "library") {

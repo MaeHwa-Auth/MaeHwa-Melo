@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { LocalPlayer } from "./player/LocalPlayer";
 import { favorites, isTauriRuntime, persistLibrary, savedFavoriteTracks, savedFolders, savedTracks, saveFavoriteTracks, saveFavorites } from "./services/library";
-import { disconnectSpotify, hasSpotifyClientId, loginSpotify, spotifyArtistProfile, spotifyConnected, spotifyHasPlaylistWriteScope, spotifyPlaylistTracks, SpotifyPlayer } from "./services/spotify";
-import type { SpotifyAlbumDetails, SpotifyArtistProfile } from "./services/spotify";
+import { disconnectSpotify, hasSpotifyClientId, loginSpotify, spotifyAlbumTracks, spotifyArtistProfile, spotifyConnected, spotifyHasPlaylistWriteScope, spotifyPlaylistTracks, SpotifyPlayer } from "./services/spotify";
+import type { SpotifyAlbumDetails, SpotifyArtistProfile, SpotifySavedAlbum, SpotifyTopArtist } from "./services/spotify";
 import type { AppPage } from "./types";
 import { findLyrics } from "./services/lrclib";
 import type { TrackLyrics } from "./services/lrclib";
@@ -115,6 +116,7 @@ let page: Page = "home";
 let activeArtist = "";
 let activeArtistId = "";
 let activeArtistProfile: SpotifyArtistProfile | null = null;
+let savedAlbumRequest = 0;
 let artistProfileLoading = false;
 let artistProfileError = "";
 let artistProfileRequest = 0;
@@ -143,6 +145,8 @@ let playlistDraftPublic = false;
 let playlistVisibilityOpen = false;
 let spotifyTracks: Track[] = [];
 let spotifyPlaylistList: { id: string; name: string; description?: string; owner?: { display_name?: string }; images?: { url: string }[]; tracks?: { total?: number }; public?: boolean | null }[] = [];
+let spotifyFollowingList: SpotifyTopArtist[] = [];
+let spotifySavedAlbumList: SpotifySavedAlbum[] = [];
 let selectedPlaylistId: string | null = null;
 let selectedPlaylistTracks: Track[] = [];
 let playbackPlaylistName = "내 라이브러리";
@@ -197,7 +201,13 @@ function navigationEntryKey(entry: NavigationEntry): string {
 
 function syncNavigationHistory(): void {
   const next = currentNavigationEntry();
-  if (navigationHistoryIndex >= 0 && navigationEntryKey(navigationHistory[navigationHistoryIndex]) === navigationEntryKey(next)) return;
+  if (navigationHistoryIndex >= 0 && navigationEntryKey(navigationHistory[navigationHistoryIndex]) === navigationEntryKey(next)) {
+    // Refresh the current entry's cached data without adding another history step.
+    // Artist profiles load asynchronously, so the original artist entry may
+    // otherwise keep a null profile when navigating back from an album.
+    navigationHistory[navigationHistoryIndex] = next;
+    return;
+  }
   navigationHistory = navigationHistory.slice(0, navigationHistoryIndex + 1);
   navigationHistory.push(next);
   navigationHistoryIndex = navigationHistory.length - 1;
@@ -460,6 +470,53 @@ function openArtistProfileView(name: string, id: string): void {
     renderArtistCenter(true);
   });
 }
+
+async function openSavedAlbumView(id: string): Promise<void> {
+  const requestId = ++savedAlbumRequest;
+  const returnPage = page === "album" ? albumReturnPage : page;
+  try {
+    const album = await spotifyAlbumTracks(id);
+    if (requestId !== savedAlbumRequest) return;
+    albumReturnPage = returnPage;
+    albumQuery = "";
+    albumView = album;
+    page = "album";
+    const main = app.querySelector<HTMLElement>(".main-content");
+    if (main) {
+      main.innerHTML = pageRenderer.renderPage();
+      lastRenderedPage = "album";
+      syncNavigationHistory();
+      bindEvents(true);
+    }
+  } catch (error) {
+    if (requestId !== savedAlbumRequest) return;
+    showNotice(error instanceof Error ? `저장한 앨범을 열지 못했습니다: ${error.message}` : "저장한 앨범을 열지 못했습니다.");
+  }
+}
+
+async function openArtistAlbumView(id: string): Promise<void> {
+  if (!id) return;
+  const requestId = ++savedAlbumRequest;
+  const returnPage = page === "album" ? albumReturnPage : page;
+  try {
+    const album = await spotifyAlbumTracks(id);
+    if (requestId !== savedAlbumRequest) return;
+    albumReturnPage = returnPage;
+    albumQuery = "";
+    albumView = album;
+    page = "album";
+    const main = app.querySelector<HTMLElement>(".main-content");
+    if (main) {
+      main.innerHTML = pageRenderer.renderPage();
+      lastRenderedPage = "album";
+      syncNavigationHistory();
+      bindEvents(true);
+    }
+  } catch (error) {
+    if (requestId !== savedAlbumRequest) return;
+    showNotice(error instanceof Error ? `앨범을 열지 못했습니다: ${error.message}` : "앨범을 열지 못했습니다.");
+  }
+}
 const lyricsUi = createLyricsUi({
   app,
   renderLyrics: nowPlayingContent.renderLyrics,
@@ -714,6 +771,8 @@ const refreshSpotifyLibrary = createSpotifyLibraryRefresh({
   setSpotifyTracks: (value) => { spotifyTracks = value; },
   setTracks: (value) => { tracks = value; },
   setSpotifyPlaylistList: (value) => { spotifyPlaylistList = value; },
+  setSpotifyFollowingArtists: (value) => { spotifyFollowingList = value; },
+  setSpotifySavedAlbums: (value) => { spotifySavedAlbumList = value; },
   mergeTracks,
   persistLibrary,
   showNotice,
@@ -760,6 +819,7 @@ const spotifyViewerSync = createSpotifyViewerSync({
 const playbackControls = createPlaybackControls({
   current: () => current,
   snapshot: () => snapshot,
+  setSnapshot: (value) => { snapshot = value; },
   queue: () => playQueue,
   shuffleHistory: () => shuffleHistory,
   setShuffleHistory: (value) => { shuffleHistory = value; },
@@ -773,8 +833,8 @@ const playbackControls = createPlaybackControls({
   spotifyPlayer,
   playTrack,
   patchProgress,
+  patchPlaybackModes,
   persistPlayback,
-  render,
   showNotice,
   sameTrackId,
 });
@@ -1037,7 +1097,7 @@ function clearPlaylistSelection(): void {
 }
 
 function renderSpotifySidebarPlaylists(): string {
-  return renderSpotifySidebarPlaylistsMarkup({ page, filter, favoritesOnly, connected: spotifyConnected(), selectedPlaylistId, playlists: spotifyPlaylistList, icon });
+  return renderSpotifySidebarPlaylistsMarkup({ page, filter, favoritesOnly, connected: spotifyConnected(), selectedPlaylistId, playlists: spotifyPlaylistList, followingArtists: spotifyFollowingList, savedAlbums: spotifySavedAlbumList, icon });
 }
 
 function renderPlaylistSelection(): void {
@@ -1299,10 +1359,39 @@ function bindEvents(centerOnly = false): void {
         showCoverOverlay(playlistCover.dataset.coverArtwork ?? "", playlistCover.dataset.coverTitle ?? "플레이리스트", playlistCover);
         return;
       }
+      const artistImage = target.closest<HTMLElement>("[data-artist-image-enlarge]");
+      if (artistImage) {
+        event.preventDefault();
+        event.stopPropagation();
+        showCoverOverlay(artistImage.dataset.coverArtwork ?? "", artistImage.dataset.coverTitle ?? "아티스트", artistImage);
+        return;
+      }
       if (target.closest<HTMLElement>("[data-open-album]")) {
         event.preventDefault();
         event.stopPropagation();
         void openCurrentAlbum();
+        return;
+      }
+      const externalLink = target.closest<HTMLAnchorElement>("[data-open-external-url]");
+      if (externalLink) {
+        event.preventDefault();
+        event.stopPropagation();
+        const url = externalLink.dataset.openExternalUrl;
+        if (url) void openUrl(url).catch(() => showNotice("Spotify 페이지를 열지 못했습니다."));
+        return;
+      }
+      const savedAlbum = target.closest<HTMLElement>("[data-open-saved-album]");
+      if (savedAlbum) {
+        event.preventDefault();
+        event.stopPropagation();
+        void openSavedAlbumView(savedAlbum.dataset.openSavedAlbum ?? "");
+        return;
+      }
+      const artistAlbum = target.closest<HTMLElement>("[data-open-artist-album]");
+      if (artistAlbum) {
+        event.preventDefault();
+        event.stopPropagation();
+        void openArtistAlbumView(artistAlbum.dataset.openArtistAlbum ?? "");
         return;
       }
       const link = target.closest<HTMLElement>("[data-open-artist]");
@@ -1331,6 +1420,13 @@ function bindEvents(centerOnly = false): void {
         event.preventDefault();
         event.stopPropagation();
         showCoverOverlay(playlistCover.dataset.coverArtwork ?? "", playlistCover.dataset.coverTitle ?? "플레이리스트", playlistCover);
+        return;
+      }
+      const artistImage = target.closest<HTMLElement>("[data-artist-image-enlarge]");
+      if (artistImage) {
+        event.preventDefault();
+        event.stopPropagation();
+        showCoverOverlay(artistImage.dataset.coverArtwork ?? "", artistImage.dataset.coverTitle ?? "아티스트", artistImage);
         return;
       }
       if (target.closest<HTMLElement>("[data-open-album]")) {
@@ -1423,7 +1519,6 @@ function bindEvents(centerOnly = false): void {
     setFavoritesOnly: (value) => { favoritesOnly = value; },
     clearPlaylistSelection,
     loadPlaylist: (id, selected, preserveScroll, autoScroll) => { void loadPlaylist(id, selected, preserveScroll, autoScroll); },
-    playbackPlaylistId: () => playbackPlaylistId,
     current: () => current,
     render,
     scrollToCurrentTrack,
@@ -1564,6 +1659,19 @@ async function toggleFavorite(id: string): Promise<void> {
 function searchLibrary(value: string, caret: number): Promise<void> { return librarySearchController.search(value, caret); }
 
 function patchProgress(): void { progressController.patchProgress(); }
+
+function patchPlaybackModes(): void {
+  const shuffleButton = app.querySelector<HTMLButtonElement>("[data-shuffle]");
+  shuffleButton?.classList.toggle("active", snapshot.shuffle);
+
+  const repeatButton = app.querySelector<HTMLButtonElement>("[data-repeat]");
+  if (!repeatButton) return;
+  const repeating = snapshot.repeat !== "off";
+  repeatButton.classList.toggle("active", repeating);
+  repeatButton.setAttribute("aria-pressed", String(repeating));
+  repeatButton.title = `반복: ${snapshot.repeat === "one" ? "한 곡" : snapshot.repeat === "all" ? "전체" : "끔"}`;
+  repeatButton.innerHTML = icon(snapshot.repeat === "one" ? "repeat-one" : "repeat");
+}
 
 function persistPlayback(): void {
   persistPlaybackState(restoreState, current, snapshot, playbackPlaylistId);

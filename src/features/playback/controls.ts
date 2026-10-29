@@ -1,7 +1,7 @@
 import type { LocalPlayer } from "../../player/LocalPlayer";
 import type { SpotifyPlayer } from "../../services/spotify";
 import type { PlaybackSnapshot, Track } from "../../types";
-import { nextQueueIndex } from "./queue";
+import { currentQueueIndex, nextQueueIndex } from "./queue";
 
 interface PlaybackRestoreState {
   trackId?: string;
@@ -17,6 +17,7 @@ interface PlaybackRestoreState {
 interface PlaybackControlsOptions {
   current: () => Track | null;
   snapshot: () => PlaybackSnapshot;
+  setSnapshot: (snapshot: PlaybackSnapshot) => void;
   queue: () => Track[];
   shuffleHistory: () => Track[];
   setShuffleHistory: (tracks: Track[]) => void;
@@ -30,8 +31,8 @@ interface PlaybackControlsOptions {
   spotifyPlayer: SpotifyPlayer;
   playTrack: (track: Track, queue?: Track[]) => Promise<void>;
   patchProgress: () => void;
+  patchPlaybackModes: () => void;
   persistPlayback: () => void;
-  render: () => void;
   showNotice: (message: string) => void;
   sameTrackId: (left: Track | null | undefined, right: Track | null | undefined) => boolean;
 }
@@ -93,7 +94,10 @@ export function createPlaybackControls(options: PlaybackControlsOptions) {
         return;
       }
       const nextTrackFromQueue = queue[nextQueueIndex(current, queue)];
-      if (nextTrackFromQueue) { await options.playTrack(nextTrackFromQueue, queue); return; }
+      if (nextTrackFromQueue) {
+        await options.playTrack(nextTrackFromQueue, queue);
+        return;
+      }
       if (snapshot.repeat === "all" && queue[0]) { await options.playTrack(queue[0], queue); return; }
       return;
     }
@@ -106,6 +110,14 @@ export function createPlaybackControls(options: PlaybackControlsOptions) {
     const snapshot = options.snapshot();
     const queue = options.queue();
     if (current?.source === "local" && snapshot.position > 3) { await options.localPlayer.seek(0); return; }
+    if (current?.source === "spotify" && snapshot.position > 3) {
+      options.setSnapshot({ ...snapshot, position: 0 });
+      options.setRestoreState({ ...options.restoreState(), position: 0 });
+      options.persistPlayback();
+      options.patchProgress();
+      await options.spotifyPlayer.seek(0);
+      return;
+    }
     if (snapshot.shuffle && options.shuffleHistoryIndex() > 0) {
       const nextIndex = options.shuffleHistoryIndex() - 1;
       const previousShuffledTrack = options.shuffleHistory()[nextIndex];
@@ -114,10 +126,13 @@ export function createPlaybackControls(options: PlaybackControlsOptions) {
       return;
     }
     if (current && queue.length) {
-      const currentIndex = queue.findIndex((track) => options.sameTrackId(track, current));
+      const currentIndex = currentQueueIndex(current, queue);
       const previous = Math.max(0, currentIndex - 1);
       const previousTrack = queue[previous];
-      if (previousTrack) { await options.playTrack(previousTrack, queue); return; }
+      if (previousTrack) {
+        await options.playTrack(previousTrack, queue);
+        return;
+      }
     }
     if (current?.source === "spotify") await options.spotifyPlayer.previous();
     else await options.localPlayer.previous();
@@ -126,16 +141,17 @@ export function createPlaybackControls(options: PlaybackControlsOptions) {
   async function toggleShuffle(): Promise<void> {
     const current = options.current();
     const snapshot = options.snapshot();
-    snapshot.shuffle = !snapshot.shuffle;
-    const history = snapshot.shuffle && current ? [current] : [];
+    const shuffle = !snapshot.shuffle;
+    options.setSnapshot({ ...snapshot, shuffle });
+    const history = shuffle && current ? [current] : [];
     options.setShuffleHistory(history);
     options.setShuffleHistoryIndex(history.length - 1);
-    options.setRestoreState({ ...options.restoreState(), shuffle: snapshot.shuffle });
+    options.setRestoreState({ ...options.restoreState(), shuffle });
     options.persistPlayback();
-    options.render();
+    options.patchPlaybackModes();
     try {
-      if (current?.source === "spotify") await options.spotifyPlayer.shuffle(snapshot.shuffle);
-      else await options.localPlayer.setShuffle(snapshot.shuffle);
+      if (current?.source === "spotify") await options.spotifyPlayer.shuffle(shuffle);
+      else await options.localPlayer.setShuffle(shuffle);
     } catch (error) {
       options.showNotice(error instanceof Error ? `셔플 설정을 적용하지 못했습니다: ${error.message}` : "셔플 설정을 적용하지 못했습니다.");
     }
@@ -144,13 +160,14 @@ export function createPlaybackControls(options: PlaybackControlsOptions) {
   async function cycleRepeat(): Promise<void> {
     const current = options.current();
     const snapshot = options.snapshot();
-    snapshot.repeat = snapshot.repeat === "off" ? "all" : snapshot.repeat === "all" ? "one" : "off";
-    options.setRestoreState({ ...options.restoreState(), repeat: snapshot.repeat });
+    const repeat = snapshot.repeat === "off" ? "all" : snapshot.repeat === "all" ? "one" : "off";
+    options.setSnapshot({ ...snapshot, repeat });
+    options.setRestoreState({ ...options.restoreState(), repeat });
     options.persistPlayback();
-    options.render();
+    options.patchPlaybackModes();
     try {
-      if (current?.source === "spotify") await options.spotifyPlayer.repeat(snapshot.repeat);
-      else await options.localPlayer.setRepeat(snapshot.repeat);
+      if (current?.source === "spotify") await options.spotifyPlayer.repeat(repeat);
+      else await options.localPlayer.setRepeat(repeat);
     } catch (error) {
       options.showNotice(error instanceof Error ? `반복 설정을 적용하지 못했습니다: ${error.message}` : "반복 설정을 적용하지 못했습니다.");
     }

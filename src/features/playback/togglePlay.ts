@@ -73,7 +73,7 @@ export function createTogglePlay(options: TogglePlayOptions) {
           return;
         }
         current = options.current() ?? current;
-        await options.spotifyPlayer.play(current, resumePosition);
+        await options.spotifyPlayer.play(current, resumePosition, options.queue());
         console.debug("[togglePlay] spotifyPlayer.play() done (restored)");
         options.setRestoredPlaybackPending(false);
         options.setSnapshot({ ...options.snapshot(), playing: true });

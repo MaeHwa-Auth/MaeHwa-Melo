@@ -24,7 +24,8 @@ export function bindPlaybackEvents(options: PlaybackEventsOptions): void {
   options.app.dataset.playbackDelegationBound = "true";
   options.app.addEventListener("click", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    // Player icons are SVG; clicks on their paths must still bubble to the button.
+    if (!(target instanceof Element)) return;
     const control = target.closest<HTMLElement>("[data-like-id], .player-bar [data-like], [data-play], [data-hero-play], [data-next], [data-previous], [data-shuffle], [data-repeat], [data-mute]");
     if (!control) return;
     if (control.matches("[data-like-id]")) {

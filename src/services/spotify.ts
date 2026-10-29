@@ -632,6 +632,15 @@ export interface SpotifyTopArtist {
   image?: string;
 }
 
+export interface SpotifySavedAlbum {
+  id: string;
+  name: string;
+  artists: string[];
+  image?: string;
+  releaseDate?: string;
+  totalTracks?: number;
+}
+
 export async function spotifyTopArtists(time_range: "short_term" | "medium_term" | "long_term" = "short_term", limit = 10): Promise<SpotifyTopArtist[]> {
   const result = await spotifyRequest(`https://api.spotify.com/v1/me/top/artists?${new URLSearchParams({ limit: String(limit), time_range })}`) as any;
   return (result.items ?? []).map((a: any) => ({ id: a.id, name: a.name, image: a.images?.[0]?.url }));
@@ -642,6 +651,20 @@ export async function spotifyFollowingArtists(limit = 50): Promise<SpotifyTopArt
   const result = await spotifyRequest(`https://api.spotify.com/v1/me/following?${new URLSearchParams({ type: "artist", limit: String(limit) })}`) as any;
   const items = result.artists?.items ?? [];
   return items.map((a: any) => ({ id: a.id, name: a.name, image: a.images?.[0]?.url }));
+}
+
+export async function spotifySavedAlbums(limit = 50): Promise<SpotifySavedAlbum[]> {
+  const result = await spotifyRequest<{
+    items?: { album?: { id: string; name: string; artists?: { name: string }[]; images?: { url: string }[]; release_date?: string; total_tracks?: number } | null }[];
+  }>(`https://api.spotify.com/v1/me/albums?${new URLSearchParams({ limit: String(limit) })}`);
+  return (result.items ?? []).flatMap(({ album }) => album ? [{
+    id: album.id,
+    name: album.name,
+    artists: (album.artists ?? []).map((artist) => artist.name).filter(Boolean),
+    image: album.images?.[0]?.url,
+    releaseDate: album.release_date,
+    totalTracks: album.total_tracks,
+  }] : []);
 }
 
 export async function spotifyArtistProfile(name: string, artistId?: string): Promise<SpotifyArtistProfile> {
@@ -771,6 +794,7 @@ export class SpotifyPlayer {
   private player: SpotifySdkPlayer | null = null;
   private deviceId = "";
   private ticker: number | undefined;
+  private playRequestChain: Promise<void> = Promise.resolve();
 
   async connect(
     onTrack: (
@@ -875,25 +899,29 @@ export class SpotifyPlayer {
     }
   }
 
-  async play(track: Track, position = 0): Promise<void> {
+  async play(track: Track, position = 0, _queue: Track[] = [track]): Promise<void> {
     if (!this.player || !this.deviceId || !track.spotifyUri) {
       throw new Error("Spotify Player가 준비되지 않았습니다.");
     }
 
-    await this.player.activateElement();
-    // Target playback directly at the SDK device. A separate transfer request
-    // races with /play on Spotify's backend and can leave the UI tracking a
-    // different device from the one producing audio.
-    await spotifyRequest<void>(
-      `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(
-        this.deviceId
-      )}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uris: [track.spotifyUri], position_ms: Math.max(0, Math.floor(position * 1000)) }),
-      }
-    );
+    const player = this.player;
+    const deviceId = this.deviceId;
+    const activation = player.activateElement();
+    const playRequest = this.playRequestChain.then(async () => {
+      await activation;
+      // Serialize rapid track changes so an older network response cannot
+      // arrive after a newer selection and take playback back to the old song.
+      await spotifyRequest<void>(
+        `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uris: [track.spotifyUri], position_ms: Math.max(0, Math.floor(position * 1000)) }),
+        }
+      );
+    });
+    this.playRequestChain = playRequest.catch(() => undefined);
+    await playRequest;
   }
 
   async pause(): Promise<void> {
@@ -939,6 +967,7 @@ export class SpotifyPlayer {
     if (this.ticker !== undefined) window.clearInterval(this.ticker);
     this.player?.disconnect();
     this.player = null;
+    this.playRequestChain = Promise.resolve();
   }
 }
 
