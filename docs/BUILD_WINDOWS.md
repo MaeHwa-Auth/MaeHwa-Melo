@@ -108,8 +108,9 @@ src-tauri/target/release/bundle/nsis/MaeHwa Melo_0.2.4_x64-setup.exe
 `.github/workflows/release.yml`은 `v*` 버전 태그를 푸시하면 Windows 설치 패키지와 Tauri 서명 파일을 만들고, GitHub Release와 `latest.json`을 게시합니다. 앱 업데이트는 이 JSON을 확인합니다.
 
 1. GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 `TAURI_SIGNING_PRIVATE_KEY` 시크릿을 만들고 Tauri signer가 생성한 개인 키 파일의 내용을 저장합니다. `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 시크릿은 키에 암호를 설정했을 때만 추가합니다.
-2. 개인 키 파일은 저장소에 커밋하거나 앱에 포함하지 말고, 분실하지 않도록 별도로 안전하게 백업합니다. 앱에 포함된 공개 키는 `src-tauri/tauri.conf.json`에서 관리합니다.
-3. 코드와 잠금 파일을 저장소에 푸시하고, `v0.5.4`처럼 Tauri 설정의 버전과 일치하는 태그를 푸시합니다. GitHub Actions가 Release를 만듭니다.
+2. 같은 화면의 **Variables** 탭에서 `VITE_SPOTIFY_CLIENT_ID` 저장소 변수를 만들고 Spotify 앱의 Client ID를 저장합니다. 이 값은 앱이 Spotify에 로그인하고 토큰을 갱신할 때 필요합니다. 비밀 키가 아니므로 GitHub Actions 변수로 설정합니다.
+3. 개인 키 파일은 저장소에 커밋하거나 앱에 포함하지 말고, 분실하지 않도록 별도로 안전하게 백업합니다. 앱에 포함된 공개 키는 `src-tauri/tauri.conf.json`에서 관리합니다.
+4. 코드와 잠금 파일을 저장소에 푸시하고, `v0.5.5`처럼 Tauri 설정의 버전과 일치하는 태그를 푸시합니다. Spotify Client ID 변수가 비어 있으면 Actions가 잘못된 설치 파일을 만들지 않고 중단합니다. 설정이 유효하면 GitHub Actions가 Release를 만듭니다.
 
 0.5.3 이하 설치본은 Updater가 포함되지 않아 0.5.4를 한 번 수동 설치해야 합니다. 자동 업데이트는 0.5.4부터 사용할 수 있습니다. 개인 키 암호를 입력하는 시크릿은 암호가 설정된 경우에만 필요합니다.
 
