@@ -68,6 +68,8 @@ npm run dev
 
 데스크톱 앱을 개발하거나 Windows EXE를 빌드하려면 Node.js, Rust MSVC 툴체인, Visual Studio C++ Build Tools가 필요합니다. 설치 및 명령어는 [Windows 개발·빌드 가이드](docs/BUILD_WINDOWS.md)에 정리했습니다.
 
+새 Windows 버전을 GitHub Releases에 배포하는 순서와 자동 업데이트 설정은 [GitHub Releases 및 앱 자동 업데이트 가이드](docs/BUILD_WINDOWS.md)를 참고하세요.
+
 핵심 명령은 다음과 같습니다.
 
 ```powershell

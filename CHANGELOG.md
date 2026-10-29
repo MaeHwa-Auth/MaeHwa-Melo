@@ -8,7 +8,8 @@
 ### 수정
 
 - **Spotify Client ID 릴리즈 전달**: GitHub Actions가 저장소 변수 `VITE_SPOTIFY_CLIENT_ID`를 프로덕션 빌드에 전달하도록 수정했습니다. 값이 비어 있으면 인증이 불가능한 설치 파일을 게시하지 않고 빌드를 명확한 오류와 함께 중단합니다.
-- 0.5.4 릴리즈 빌드에 Client ID가 전달되지 않아 Spotify 토큰 갱신과 Web Playback 인증이 실패하던 문제를 수정합니다.
+- 0.5.4 릴리즈 빌드에 Client ID가 전달되지 않아 Spotify 토큰 갱신과 Web Playback 인증이 실패하던 문제를 수정했습니다.
+- `v0.5.5` GitHub Actions Windows 빌드와 NSIS/MSI 설치 패키지, 서명 파일, `latest.json` 게시를 확인했습니다.
 
 ## [0.5.4] - 2026-10-29 — 앱 자동 업데이트
 

@@ -95,24 +95,47 @@ src-tauri/target/release/bundle/nsis/
 src-tauri/target/release/bundle/msi/
 ```
 
-NSIS 설치 파일 이름에는 현재 앱 버전이 포함됩니다. MaeHwa Melo `0.2.4`의 기본 예시는 다음과 같습니다.
+NSIS 설치 파일 이름에는 현재 앱 버전이 포함됩니다. 예를 들어 `0.5.5`의 파일명은 다음과 같습니다.
 
 ```text
-src-tauri/target/release/bundle/nsis/MaeHwa Melo_0.2.4_x64-setup.exe
+src-tauri/target/release/bundle/nsis/MaeHwa Melo_0.5.5_x64-setup.exe
 ```
 
-이 개발 세션에서는 직접 실행하는 EXE를 검증했으며 NSIS/MSI 설치·업그레이드 흐름은 아직 검증하지 않았습니다. 사용자 배포 전에 설치/제거, WebView2 요구사항, Windows SmartScreen 및 업그레이드 시 데이터 보존을 확인하세요.
+GitHub Actions에서 0.5.5 NSIS 및 MSI 패키지 생성을 확인했고, NSIS 설치 후 앱 내 0.5.5 업데이트까지 확인했습니다. MSI 패키지도 생성되지만 별도 설치 검증은 하지 않았습니다. Windows SmartScreen 경고는 새 앱의 평판이 충분히 쌓이기 전에 나타날 수 있습니다.
 
 ## GitHub Releases 및 앱 자동 업데이트
 
-`.github/workflows/release.yml`은 `v*` 버전 태그를 푸시하면 Windows 설치 패키지와 Tauri 서명 파일을 만들고, GitHub Release와 `latest.json`을 게시합니다. 앱 업데이트는 이 JSON을 확인합니다.
+`.github/workflows/release.yml`은 `v*` 버전 태그가 푸시되면 Windows 설치 패키지와 Tauri 서명 파일을 만들고, GitHub Release와 `latest.json`을 게시합니다. 앱은 `latest.json`을 확인해 새 버전을 찾습니다. 일반적인 다음 배포는 아래 예시의 `0.5.6`을 실제 다음 버전으로 바꿔 진행합니다.
 
-1. GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 `TAURI_SIGNING_PRIVATE_KEY` 시크릿을 만들고 Tauri signer가 생성한 개인 키 파일의 내용을 저장합니다. `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 시크릿은 키에 암호를 설정했을 때만 추가합니다.
-2. 같은 화면의 **Variables** 탭에서 `VITE_SPOTIFY_CLIENT_ID` 저장소 변수를 만들고 Spotify 앱의 Client ID를 저장합니다. 이 값은 앱이 Spotify에 로그인하고 토큰을 갱신할 때 필요합니다. 비밀 키가 아니므로 GitHub Actions 변수로 설정합니다.
-3. 개인 키 파일은 저장소에 커밋하거나 앱에 포함하지 말고, 분실하지 않도록 별도로 안전하게 백업합니다. 앱에 포함된 공개 키는 `src-tauri/tauri.conf.json`에서 관리합니다.
-4. 코드와 잠금 파일을 저장소에 푸시하고, `v0.5.5`처럼 Tauri 설정의 버전과 일치하는 태그를 푸시합니다. Spotify Client ID 변수가 비어 있으면 Actions가 잘못된 설치 파일을 만들지 않고 중단합니다. 설정이 유효하면 GitHub Actions가 Release를 만듭니다.
+### 최초 1회 GitHub 설정
 
-0.5.3 이하 설치본은 Updater가 포함되지 않아 0.5.4를 한 번 수동 설치해야 합니다. 자동 업데이트는 0.5.4부터 사용할 수 있습니다. 개인 키 암호를 입력하는 시크릿은 암호가 설정된 경우에만 필요합니다.
+1. **Settings → Secrets and variables → Actions → Secrets**에 `TAURI_SIGNING_PRIVATE_KEY`를 등록합니다. Tauri signer가 만든 개인 키 파일의 전체 내용을 넣습니다. 키에 암호를 설정했다면 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`도 Secret으로 등록합니다.
+2. **Settings → Secrets and variables → Actions → Variables**에 `VITE_SPOTIFY_CLIENT_ID`를 등록합니다. Spotify 앱의 Client ID를 넣습니다. 이것은 앱 빌드에 포함되는 공개 식별자이므로 Secret이 아닌 Variable입니다.
+3. 개인 키는 저장소에 커밋하거나 앱에 넣지 말고 별도로 안전하게 백업합니다. 앱 검증용 공개키는 `src-tauri/tauri.conf.json`에서 관리합니다.
+
+### 새 버전 배포 순서
+
+1. **버전 번호를 정합니다.** 예: `0.5.5` 다음은 `0.5.6`. 먼저 `CHANGELOG.md` 맨 위에 새 버전의 날짜와 실제 변경 사항을 적습니다.
+2. **버전을 올립니다.** `npm version patch --no-git-tag-version` 명령은 `package.json`과 `package-lock.json`을 함께 올립니다. 같은 새 버전을 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src/features/pages/renderers.ts`의 설정 화면 표기, `README.md`에도 반영합니다.
+3. **빌드 버전과 코드를 확인합니다.** `cargo check --manifest-path src-tauri/Cargo.toml`로 Cargo 잠금 파일을 갱신하고, `npm run build`와 `cargo check --manifest-path src-tauri/Cargo.toml`가 통과하는지 확인합니다. 변경 파일과 버전 번호가 모두 맞는지 확인합니다.
+4. **의도한 파일만 커밋하고 main에 푸시합니다.** 예: `git add -u`, 필요한 새 파일은 경로를 지정해 추가한 다음 `git status --short`로 스테이징 목록을 확인합니다. 이어서 `git commit -m "Release v0.5.6"`와 `git push origin main`을 실행합니다. `git add -A`는 백업, 로그, 로컬 설정 파일을 실수로 포함할 수 있으므로 피합니다.
+5. **태그를 만들고 푸시합니다.** 커밋한 버전과 정확히 같은 태그를 사용합니다.
+
+   ```powershell
+   git tag -a v0.5.6 -m "MaeHwa Melo v0.5.6"
+   git push origin v0.5.6
+   ```
+
+6. **Actions와 Release를 확인합니다.** 저장소의 **Actions → Release MaeHwa Melo**에서 작업이 성공해야 합니다. 성공한 Release에는 `latest.json`, NSIS `.exe` 설치 파일, MSI 설치 파일과 각각의 `.sig` 서명 파일이 있어야 합니다. Spotify Client ID 변수가 없으면 사전 검사에서 빌드를 중단합니다.
+7. **앱에서 업데이트를 확인합니다.** 설치된 앱의 설정에서 **앱 업데이트 → 업데이트 확인**을 누르면 새 버전을 설치할 수 있습니다. 새 버전을 아직 미루지 않았다면 앱 시작 시 안내창이 나타날 수도 있습니다.
+
+0.5.3 이하 설치본은 Updater가 포함되지 않아 0.5.4를 한 번 수동 설치해야 합니다. 0.5.4부터 앱 안에서 업데이트할 수 있습니다. 개인 키 암호 Secret은 키에 암호를 설정한 경우에만 필요합니다. Windows SmartScreen이 새 설치 파일을 경고할 수 있으므로 공식 GitHub Release에서 받은 파일인지 확인합니다.
+
+### 배포 문제 확인
+
+- Actions가 `VITE_SPOTIFY_CLIENT_ID` 검사에서 멈추면 저장소 **Variables**에 변수 이름과 Client ID 값이 정확히 등록됐는지 확인합니다.
+- 서명 오류가 나면 `TAURI_SIGNING_PRIVATE_KEY`와 등록된 공개키가 같은 키 쌍인지 확인합니다. 개인키나 암호를 로그, 저장소, 앱 파일에 넣지 않습니다.
+- Actions가 성공했는데 앱에서 버전을 찾지 못하면 GitHub Release에 `latest.json`과 Windows 업데이터 아티팩트가 모두 게시됐는지 확인합니다.
 
 ## 유용한 프로젝트 명령
 
